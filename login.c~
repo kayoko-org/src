@@ -90,7 +90,7 @@ int main() {
 
             // 1. Determine Home Directory with Fallback
             char *home = (pw->pw_dir && file_exists(pw->pw_dir)) ? pw->pw_dir : "/";
-            print_motd;
+            print_motd(home);
 	    chdir(home);
 
             // 2. Determine Shell with Fallback
