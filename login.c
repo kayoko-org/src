@@ -1,15 +1,23 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <termios.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <pwd.h>
 
 void get_aix_time(char *buf) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
-    // Format: Mon Mar 23 15:25:31 CDT 2026
     strftime(buf, 64, "%a %b %d %H:%M:%S %Z %Y", t);
+}
+
+int file_exists(const char *path) {
+    struct stat buffer;
+    return (stat(path, &buffer) == 0);
 }
 
 void print_splash(const char *version, const char *pty) {
@@ -33,7 +41,7 @@ void print_splash(const char *version, const char *pty) {
 int main() {
     char user[32], pass[32], c_user[32], c_pass[32];
     struct termios t_old, t_new;
-    char *xroot = getenv("XAIROOT") ? getenv("XAIROOT") : "/";
+    struct passwd *pw;
 
     while (1) {
         printf("Console login: ");
@@ -42,8 +50,6 @@ int main() {
 
         printf("%s's Password: ", user);
         fflush(stdout);
-
-        // Mask Password
         tcgetattr(STDIN_FILENO, &t_old);
         t_new = t_old;
         t_new.c_lflag &= ~ECHO;
@@ -52,34 +58,41 @@ int main() {
         tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
         printf("\n");
 
-        // Auth Logic
-        char shadow_path[256];
-        snprintf(shadow_path, sizeof(shadow_path), "%s/etc/shadow", xroot);
-        FILE *fp = fopen(shadow_path, "r");
-        int authenticated = 0;
-
+        // Auth Logic against /etc/shadow
+        int auth = 0;
+        FILE *fp = fopen("/etc/shadow", "r");
         if (fp) {
             while (fscanf(fp, "%[^:]:%s\n", c_user, c_pass) != EOF) {
                 if (strcmp(user, c_user) == 0 && strcmp(pass, c_pass) == 0) {
-                    authenticated = 1;
+                    auth = 1;
                     break;
                 }
             }
             fclose(fp);
         }
 
-        if (authenticated) {
-            print_splash("7.3", "vty0");
-            
-            // Set up environment for ksh
-            setenv("SHELL", "/bin/ksh", 1);
-            setenv("HOME", "/home/root", 1);
-            setenv("PS2", "> ", 1);
-            setenv("PS1", "$(whoami)@$(hostname):$(pwd)> ", 1);
-            
-	    // Exec into ksh via env
-	    execl("/bin/ksh", "-ksh", (char *)NULL);
-	    perror("exec failed");
+        if (auth && (pw = getpwnam(user))) {
+            print_splash(pw->pw_name, "vty0");
+
+            // 1. Determine Home Directory with Fallback
+            char *home = (pw->pw_dir && file_exists(pw->pw_dir)) ? pw->pw_dir : "/";
+            chdir(home);
+
+            // 2. Determine Shell with Fallback
+            char *shell = (pw->pw_shell && file_exists(pw->pw_shell)) ? pw->pw_shell : "/bin/ksh";
+            if (!file_exists(shell)) shell = "/bin/sh"; // Last resort
+
+            // 3. Set Environment
+            setenv("HOME", home, 1);
+            setenv("SHELL", shell, 1);
+            setenv("USER", pw->pw_name, 1);
+            setenv("LOGNAME", pw->pw_name, 1);
+            setenv("PATH", "/bin:/usr/bin", 0);
+
+            // 4. Exec as Login Shell (the '-' prefix)
+            execl(shell, "-ksh", (char *)NULL);
+
+            perror("exec failed");
             exit(1);
         } else {
             sleep(2);

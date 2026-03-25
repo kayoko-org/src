@@ -25,6 +25,11 @@ if [ ! -d "$MUSL_INST" ]; then
     [ -d "$MUSL_DIR" ] || tar -xf musl-$MUSL_VER.tar.gz -C "$HOME"
     (cd "$MUSL_DIR" && ./configure --prefix="$MUSL_INST" --syslibdir="$MUSL_INST/lib" && make -j"$NPROCS" && make install)
 fi
+REAL_CC="$MUSL_INST/bin/musl-gcc"
+export CC="$REAL_CC"
+export LDFLAGS="-static" 
+export CFLAGS="-I$MUSL_INST/include"
+
 
 # 3. Build OKSH (Static shell)
 if [ ! -x "$OKSH_DIR/oksh" ]; then
@@ -37,15 +42,15 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
-cc -O2 -o bootseq bootseq.c -lzstd
-cc -O2 -static -o "$XAI_ROOT/sbin/login" login.c
+"$REAL_CC" -O2 -static -o bootseq bootseq.c -lzstd
+"$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" login.c
 
 # 5. Build SBASE (The Toolchest)
 if [ ! -d "$SBASE_DIR" ]; then
     git clone https://git.suckless.org/sbase "$SBASE_DIR"
 fi
 # Using static LDFLAGS to keep the base tools independent of the shim
-(cd "$SBASE_DIR" && make LDFLAGS="-static" sbase-box)
+(cd "$SBASE_DIR" && make CC="$REAL_CC" LDFLAGS="-static" sbase-box)
 
 # 6. Populate /bin (POSIX tools only)
 install -m 755 "$SBASE_DIR/sbase-box" "$XAI_ROOT/bin/.utils"
@@ -80,15 +85,13 @@ done
 
 # 7. Build the AIX Identity Shim & Uname
 # We link uname specifically to /lib/libc.so
-"$MUSL_INST/bin/musl-gcc" -fPIC -shared -O2 -o "$XAI_ROOT/lib/libkstat.so" libkstat.c
-"$MUSL_INST/bin/musl-gcc" -O2 -o "$XAI_ROOT/bin/uname" uname.c -Wl,-dynamic-linker,/lib/libc.so
+"$REAL_CC" -fPIC -shared -O2 -o "$XAI_ROOT/lib/libkstat.so" libkstat.c
+"$REAL_CC" -O2 -o "$XAI_ROOT/bin/uname" uname.c -Wl,-dynamic-linker,/lib/libc.so
 
 # 8. Finalize Library Layout
 # Move musl into the primary /lib/libc.so slot
 cp "$MUSL_INST/lib/libc.so" "$XAI_ROOT/lib/libc.so"
-chmod +x "$XAI_ROOT/lib/libc.so"
-
-# Create the relative symlink for any legacy software looking for the musl loader name
+# This is the critical link for all dynamic musl binaries
 (cd "$XAI_ROOT/lib" && ln -sf libc.so ld-musl-x86_64.so.1)
 
 # 9. Environment Setup
