@@ -1,0 +1,18 @@
+root@aix:/> cat smit.log
+
+[Mar 23 2026, 15:37:44]
+    Starting SMIT
+
+(Menu screen selected,
+        FastPath    = "top_menu",
+        id_seq_num  = "0",
+        next_id     = "top_menu",
+        title       = "System Management".)
+
+Doing shell escape.
+
+
+[Mar 23 2026, 15:38:43]
+    Exiting SMIT
+
+root@aix:/>

@@ -1,0 +1,93 @@
+root@aix:/srclo.net-trunk/src> perl -MHTTP::Tiny -e '
+    $url = "http://localh> ost:80";
+    $response = HTTP::Tiny->new->get($url);
+    if ($response->{success}) {
+        print "--- HEADERS ---\n";
+        while (my ($k, $v) = each %{$response->{headers}}) {
+            # Headers can be arrays if there are multiples (like Set-Cookie)
+            $val = ref $v eq "ARRAY" ? join(", ", @$v) : $v;
+            print "$k: $val\n";
+        }
+        print "\n--- CONTENT ---\n";
+        print $response->{content};
+    } else {
+        print "Failed: $response->{status} $response->{reason}\n";
+    }'> > > > > > > > > > > > >
+--- HEADERS ---
+accept-ranges: bytes
+content-length: 2341
+server: aix/ppc64/lorbis
+date: Thu, 01 Jan 1970 00:00:00 GMT
+last-modified: Mon, 23 Mar 2026 21:30:08 GMT
+x-source-code: https://gitlab.com/larskow/srclo.net/-/raw/trunk/src/lorbis.go
+content-type: text/html; charset=utf-8
+
+--- CONTENT ---
+<!doctype html>
+<html lang=en id=project-main>
+<meta charset=utf-8>
+<title>larkso's jar</title>
+<meta name="description" content="larsko is a pickle jar">
+<link rel="canonical" href="https://srclo.net/">
+<link rel="stylesheet" href="/static/files/ibm.css">
+<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+<body>
+
+<main>
+    <nav>
+        <header><a href="/"><img src="/static/img/logo.svg" alt="Larsko Logo" class="ibm-logo"></a></header>
+        <br />
+        <header>Git</header>
+        <ul>
+            <li><a href="https://gitlab.com/larskow">GitLab</a></li>
+            <li><a href="https://codeberg.org/larskow">Codeberg</a></li>
+        </ul>
+
+        <header>Downloads</header>
+        <ul>
+            <li><a href="/resume.pdf">Résumé</a></li>
+            <li><a href="/srclo.tgz">Source Archive</a></li>
+        </ul>
+    </nav>
+<article>
+    <header>
+        <h1>larsko's jar.</h1>
+        <p id="callout">A <strong>libre</strong> enjoyer, <strong>AIX 7300-03-02-2546 (aix/ppc64)</strong> user, and maniac.</p>
+        <small>Ran by <strong>root@aix</strong>...</small>
+    </header>
+
+    <hr />
+
+    <section class="box-section">
+        <h2 class="boxtitle">Projects</h2>
+        <div class="cmdbox">
+            <ol>
+                <li class="priori"><a href="https://codeberg.org/larskow/dotfiles">dotfiles</a></li>
+                <li class="priori"><a href="https://codeberg.org/larskow/dwm">dwm</a></li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="posts-section">
+        <h2>Posts</h2>
+        <ul>
+            <li class="priori"><code>[2026-03-23]</code> <a href="/posts/java.html">The Power and Legacy of Java</a></li>
+
+        </ul>
+    </section>
+</article>
+</main>
+
+<footer>
+    <div class="footer-left">
+        Copyright &copy; 2026 larsko et al. All rights reserved.
+    </div>
+    <div class="footer-right">
+    The content on this website, including text, images, graphics, and other material, is protected by copyright law. No part of this website may be copied, reproduced, or used in any form without prior written permission.
+    </div>
+    <br />
+    Have questions? Contact the webmaster at <a href="mailto:larsko@srclo.net">&lt;larsko@srclo.net&gt;</a>.
+</footer>
+
+</body>
+</html>

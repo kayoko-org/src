@@ -1,0 +1,6 @@
+PS1:
+# export PS1='$(whoami)@$(hostname):$(pwd)> '
+root@aix:/home> ls
+guest       lost+found  ragent      srvproxy
+root@aix:/home>
+

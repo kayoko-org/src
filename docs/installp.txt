@@ -1,0 +1,32 @@
+# installp
+installp: This function of installp requires a list of
+        installable filesets to be provided.
+
+Usage installp:  Install Software:  Apply Only (-a) or Apply/Commit (-ac):
+      installp [-R Path] {-a | -ac[N]} [-e LogFile] [-V Number] [-d Device]
+               [-bBDEIpqQSvwX] [-F | -g] [-O{[r][s][u]}] [-t SaveDirectory]
+               [-z BlockSize] { FileSet [Level] ... | -f ListFile | all }
+
+Usage installp:  Commit (-c), Reject (-r), or Deinstall (-u) Software:
+      installp [-R Path] {-c | -r | -u} [-e LogFile] [-V Number] [-bgpvwX]
+               [-O{[r][s][u]}] { FileSet [Level] ... | -f ListFile | all }
+      Note:  The keyword "all" is not valid with the -r or -u flag.
+
+Usage installp:  Clean Up Install Failure (-C):
+      installp [-R Path] -C [-e LogFile] [-b]
+
+Usage installp:  List Software on Media (-l or -L):
+      installp {-l[E] | -L} [-M Platform] [-e LogFile] [-d Device]
+                 [-BIqS] [-O{[s][u]}] [-z BlockSize]
+
+Usage installp:  Commit (-c), Reject (-r), or Deinstall (-u) Software:
+      installp [-R Path] {-c | -r | -u} [-e LogFile] [-V Number] [-bgpvwX]
+               [-O{[r][s][u]}] { FileSet [Level] ... | -f ListFile | all }
+      Note:  The keyword "all" is not valid with the -r or -u flag.
+
+Usage installp:  List Fixes (-A) or Supplemental Information (-i):
+      installp {-A | -i} [-e LogFile] [-d Device] [-BIqSw] [-O{[s][u]}]
+                 [-z BlockSize] { FileSet [Level] ... | -f ListFile | all }
+
+Usage installp:  Validate fileset signature (-G):
+      installp -G -d Device { FileSet [Level] ... | -f ListFile | all }

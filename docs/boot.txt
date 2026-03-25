@@ -1,0 +1,111 @@
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM                         IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM    STARTING SOFTWARE    IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM       PLEASE WAIT...    IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM                         IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM IBM 
+
+
+
+-------------------------------------------------------------------------------
+                                Welcome to AIX.
+                   boot image timestamp: 00:54:25 02/12/2026
+                 The current time and date: 22:55:09 03/23/2026
+        processor count: 1;  memory size: 2048MB;  kernel size: 58185352
+boot device: /vdevice/vfc-client@30000005/disk@5005076813234c50,1000000000000:2
+-------------------------------------------------------------------------------
+
+
+Saving Base Customize Data to boot disk
+Starting the sync daemon
+Starting the error daemon
+System initialization completed.
+TE=OFF
+SIG_VER=OFF
+CHKEXEC=OFF
+CHKSHLIB=OFF
+CHKSCRIPT=OFF
+CHKKERNEXT=OFF
+STOP_UNTRUSTD=OFF
+STOP_ON_CHKFAIL=OFF
+LOCK_KERN_POLICIES=OFF
+TSD_FILES_LOCK=OFF
+TSD_LOCK=OFF
+TEP=OFF
+TLP=OFF
+Successfully updated the Kernel Authorization Table.
+Successfully updated the Kernel Role Table.
+Successfully updated the Kernel Command Table.
+Successfully updated the Kernel Device Table.
+Successfully updated the Kernel Object Domain Table.
+Successfully updated the Kernel  Domains Table.
+Successfully updated the Kernel RBAC log level. 
+Successfully updated the Kernel RBAC log level. 
+OPERATIONAL MODE Security Flags
+ROOT                      :    ENABLED
+TRACEAUTH                 :   DISABLED
+System runtime mode is now OPERATIONAL MODE.
+Setting tunable parameters...complete
+Starting Multi-user Initialization
+ Performing auto-varyon of Volume Groups 
+ Activating all paging spaces 
+swapon: Paging device /dev/hd6 is already active.
+
+The current volume is: /dev/hd1
+Primary superblock is valid.
+
+The current volume is: /dev/hd10opt
+Primary superblock is valid.
+ Performing all automatic mounts 
+Multi-user initialization completed
+Checking for srcmstr active...complete
+Starting tcpip daemons:
+0513-059 The syslogd Subsystem has been started. Subsystem PID is 4981180.
+0513-059 The sendmail Subsystem has been started. Subsystem PID is 4653494.
+0513-059 The portmap Subsystem has been started. Subsystem PID is 5046700.
+0513-059 The inetd Subsystem has been started. Subsystem PID is 5702076.
+0513-059 The hostmibd Subsystem has been started. Subsystem PID is 5767606.
+0513-059 The snmpd Subsystem has been started. Subsystem PID is 5833142.
+0513-059 The snmpmibd Subsystem has been started. Subsystem PID is 4850116.
+0513-059 The aixmibd Subsystem has been started. Subsystem PID is 5505504.
+en2 changed
+Finished starting tcpip daemons.
+Starting NFS services:
+0513-059 The biod Subsystem has been started. Subsystem PID is 5308794.
+0513-059 The rpc.statd Subsystem has been started. Subsystem PID is 4718858.
+statd -a can't get ip configuration
+: No such file or directory
+0513-059 The rpc.lockd Subsystem has been started. Subsystem PID is 5112246.
+statd -a can't get ip configuration
+: No such file or directory
+Completed NFS services.
+statd -a can't get ip configuration
+: No such file or directory
+
+
+
+
+
+
+
+
+AIX Version 7
+Copyright IBM Corporation, 1982, 2026.

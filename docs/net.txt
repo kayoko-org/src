@@ -1,0 +1,24 @@
+root@aix:/> ifconfig -a
+ifconfig -a
+en0: flags=1e084863,81cc0<UP,BROADCAST,NOTRAILERS,RUNNING,SIMPLEX,MULTICAST,GROUPRT,64BIT,CHECKSUM_OFFLOAD(ACTIVE),LARGESEND,CHAIN>
+        inet 192.168.129.109 netmask 0xfffffff8 broadcast 192.168.129.111
+         tcp_sendspace 262144 tcp_recvspace 262144 rfc1323 1
+en1: flags=1e084863,81cc0<UP,BROADCAST,NOTRAILERS,RUNNING,SIMPLEX,MULTICAST,GROUPRT,64BIT,CHECKSUM_OFFLOAD(ACTIVE),LARGESEND,CHAIN>
+        inet 192.168.100.126 netmask 0xffffff00 broadcast 192.168.100.255
+         tcp_sendspace 262144 tcp_recvspace 262144 rfc1323 1
+en2: flags=1e084863,81cc0<UP,BROADCAST,NOTRAILERS,RUNNING,SIMPLEX,MULTICAST,GROUPRT,64BIT,CHECKSUM_OFFLOAD(ACTIVE),LARGESEND,CHAIN>
+        inet6 fe80::30d0:95ff:fedd:e35e/64
+         tcp_sendspace 262144 tcp_recvspace 262144 rfc1323 1
+lo0: flags=e08084b,c0<UP,BROADCAST,LOOPBACK,RUNNING,SIMPLEX,MULTICAST,GROUPRT,64BIT,LARGESEND,CHAIN>
+        inet 127.0.0.1 netmask 0xff000000 broadcast 127.255.255.255
+        inet6 ::1%1/128
+         tcp_sendspace 131072 tcp_recvspace 131072 rfc1323 1
+
+root@aix:/> wget
+ksh93: wget: not found [No such file or directory]
+root@aix:/> curl
+ksh93: curl: not found [No such file or directory]
+root@aix:/> fetch
+ksh93: fetch: not found [No such file or directory]
+root@aix:/> perl -e 'use LWP::Simple; getstore("https://public.dhe.ibm.com/aix/freeSoftware/aixtoolbox/install-dnf-latest.sh", "install-dnf-latest.sh");'
+root@aix:/> perl -e 'use LWP::Simple; getstore("https://public.dhe.ibm.com/aix/freeSoftware/aixtoolbox/ezinstall/ppc/dnf_aixtoolbox.sh", "install-dnf-latest.sh");'

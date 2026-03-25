@@ -1,0 +1,14 @@
+# ls /dev
+.SRC-unix    fscsi0       hd6          livedump     ptyp0        ptypb        rhd2         rootvg       sysdumpctl   ttyp7        vscsi0
+IPL_rootvg   fscsi1       hd8          log          ptyp1        ptypc        rhd3         rrep00       sysdumpfile  ttyp8        vty0
+SRC          fscsi2       hd9var       mem          ptyp2        ptypd        rhd4         sad          sysdumpnull  ttyp9        xti
+__vg10       fscsi3       hdcrypt      null         ptyp3        ptype        rhd5         sfw0         tty          ttypa        zero
+audit        hd1          hdisk0       nuls         ptyp4        ptypf        rhd6         sfwcomm0     ttyp0        ttypb
+cd0          hd10opt      hdisk1       nvram        ptyp5        random       rhd8         sfwcomm1     ttyp1        ttypc
+clone        hd11admin    ipl_blv      pfcdd0       ptyp6        rcd0         rhd9var      sfwcomm2     ttyp2        ttypd
+console      hd2          ipldevice    pkcs11       ptyp7        rep00        rhdisk0      sfwcomm3     ttyp3        ttype
+echo         hd3          iscsi0       pmem         ptyp8        rhd1         rhdisk1      slog         ttyp4        ttypf
+error        hd4          kmem         ptc          ptyp9        rhd10opt     rlg_dumplv   spx          ttyp5        urandom
+errorctl     hd5          lg_dumplv    pts          ptypa        rhd11admin   rlivedump    sysdump      ttyp6        vio0
+#
+

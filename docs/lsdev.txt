@@ -1,0 +1,62 @@
+# lsdev
+L2cache0   Available             L2 Cache
+cache0     Available             SSD Cache virtual device
+cd0        Available             Virtual SCSI Optical Served by VIO Server
+cengine0   Available             SSD Cache engine
+cluster0   Available             Cluster Node
+en0        Available             Standard Ethernet Network Interface
+en1        Available             Standard Ethernet Network Interface
+en2        Available             Standard Ethernet Network Interface
+ent0       Available             Virtual I/O Ethernet Adapter (l-lan)
+ent1       Available             Virtual I/O Ethernet Adapter (l-lan)
+ent2       Available             Virtual I/O Ethernet Adapter (l-lan)
+et0        Defined               IEEE 802.3 Ethernet Network Interface
+et1        Defined               IEEE 802.3 Ethernet Network Interface
+et2        Defined               IEEE 802.3 Ethernet Network Interface
+fcs0       Available C5-T1       Virtual Fibre Channel Client Adapter
+fcs1       Available C7-T1       Virtual Fibre Channel Client Adapter
+fcs2       Available C8-T1       Virtual Fibre Channel Client Adapter
+fcs3       Available C9-T1       Virtual Fibre Channel Client Adapter
+fscsi0     Available C5-T1-01    FC SCSI I/O Controller Protocol Device
+fscsi1     Available C7-T1-01    FC SCSI I/O Controller Protocol Device
+fscsi2     Available C8-T1-01    FC SCSI I/O Controller Protocol Device
+fscsi3     Available C9-T1-01    FC SCSI I/O Controller Protocol Device
+hd1        Defined               Logical volume
+hd2        Defined               Logical volume
+hd3        Defined               Logical volume
+hd4        Defined               Logical volume
+hd5        Defined               Logical volume
+hd6        Defined               Logical volume
+hd8        Defined               Logical volume
+hd10opt    Defined               Logical volume
+hd11admin  Defined               Logical volume
+hd9var     Defined               Logical volume
+hdcrypt    Available             Data encryption
+hdisk0     Available C5-T1-01    MPIO IBM 2076 FC Disk
+hdisk1     Available C5-T1-01    MPIO IBM 2076 FC Disk
+inet0      Available             Internet Network Extension
+iocp0      Defined               I/O Completion Ports
+iscsi0     Available             iSCSI Protocol Device
+lg_dumplv  Defined               Logical volume
+livedump   Defined               Logical volume
+lo0        Available             Loopback Network Interface
+lvdd       Available             LVM Device Driver
+mem0       Available             Memory
+pkcs11     Available             ACF/PKCS#11 Device
+proc0      Available 00-00       Processor
+pty0       Available             Asynchronous Pseudo-Terminal
+rcm0       Defined               Rendering Context Manager Subsystem
+rep00      Defined               Logical volume
+rootvg     Defined               Volume group
+sfw0       Available             Storage Framework Module
+sfwcomm0   Available C5-T1-01-FF Fibre Channel Storage Framework Comm
+sfwcomm1   Available C7-T1-01-FF Fibre Channel Storage Framework Comm
+sfwcomm2   Available C8-T1-01-FF Fibre Channel Storage Framework Comm
+sfwcomm3   Available C9-T1-01-FF Fibre Channel Storage Framework Comm
+sys0       Available             System Object
+sysplanar0 Available             System Planar
+vio0       Available             Virtual I/O Bus
+vsa0       Available             LPAR Virtual Serial Adapter
+vscsi0     Available             Virtual SCSI Client Adapter
+vty0       Available             Asynchronous Terminal
+#

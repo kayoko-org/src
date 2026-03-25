@@ -1,0 +1,63 @@
+# ls /lib
+IbBaseLib             libIM.a               libct_cas.a           libha_gs64.a          libpkcs11_sw.a        libtkstub8.6.a        nls
+IbBaseLib.a           libIbBaseLibMT.a      libct_cu.a            libha_gs64_r.a        libpksus.a            libtli.a              nmf
+IbMxLib               libMrm.a              libct_dev.a           libha_gs_r.a          libpmapi.a            libtli_r.a            nterm
+Mail.rc               libPW.a               libct_di.a            libha_rr.a            libpopt.a             libtncdb.a            objrepos
+X11                   libSM.a               libct_ffdc.a          libhb_client.a        libposixtrace.a       libtncmsg.a           opencryptoki
+acct                  libSpmi.a             libct_gscl.a          libhdcrypt.a          libpp.a               libtpmtool.a          ossl-modules
+aio.exp               libUil.a              libct_hasvcs.a        libhdcrypt.a.min      libprm.a              libtrace.a            pdiagex.exp
+assist                libX11.a              libct_idm.a           libhistory.a          libprobevue.a         libtrustchk.a         perf
+bind                  libXau.a              libct_mc.a            libhmc.a              libprobevuejava.so    libtspi.a             phones-file
+bind64                libXaw.a              libct_metrics.a       libhpm.a              libprobevuejava64.so  libttf.a              physloc
+boot                  libXcursor.a          libct_mss.a           libhpm_r.a            libpsa.a              libudf.a              pkcs11
+bootpkg               libXdamage.a          libct_namapi.a        libi18n.a             libpthdebug.a         libunwind.a           pkgconfig
+bos                   libXdmcp.a            libct_netmon.a        libibmcls.a           libpthread.a          libutiljni.so         posix_aio.exp
+bugfiler              libXevie.a            libct_osse.a          libibmuis.a           libpthreads.a         libutiljni64.so       pse.exp
+bugformat             libXext.a             libct_pmsg.a          libice.a              libpthreads_compat.a  libvaliduser.a        pse.imp
+cdat                  libXfixes.a           libct_ppc.a           libiconv.a            libptools.a           libvoos.a             ras
+cfgodm.ipl            libXfont.a            libct_prm.a           libicudata.a          libptools_ptr.a       libvsm.a              remote-file
+cflow1                libXi.a               libct_prms.a          libicui18n.a          libpvc.a              libwinsnmp_ne.a       rpcsec.so
+cluster               libXm.a               libct_quorum.a        libicuio.a            libqb.a               libwlm.a              rpcsec.so.1
+corrals               libXmu.a              libct_rce.a           libicutest.a          librapi.a             libwparcompat.so      rpm
+cpp                   libXp.a               libct_rm.a            libicutu.a            librdiag.a            libwpardr.a           rpmrc
+cron                  libXpm.a              libct_rmac.a          libicuuc.a            libreadline.a         libwparlog.a          sa
+crt0.o                libXrender.a          libct_rmf.a           libifaddrs.a          librmcjni.so          libxcurses.a          sasl
+crt0_64.o             libXt.a               libct_rmfg.a          libifaddrs.exp        librmcjni64.so        libxdsm.a             scripts
+crt0_r.o              libXtst.a             libct_sca.a           libikecmd.a           librpcsvc.a           libxerces.a           security
+crti.o                libaacct.a            libct_scamode.a       libinstall.a          librpcsvc_r.a         libxkbfile.a          semutil
+crti_64.o             libacf.a              libct_sec.a           libintl.a             librpp.a              libxlomp_ser.a        sendmail
+dag                   libarm.a              libct_skc.a           libisns.a             librs2.a              libxlsmp.a            siconv
+deroff                libarm2.a             libct_sr.a            libisode.a            librt.a               libxml2.a             smdemon.cleanu
+dhcp_api.exp          libarm4.a             libct_stackdump.a     libjpa.a              librtl.a              libxnet.a             smit
+dict.d                libartex.a            libct_tr.a            libjpa64.a            librts.a              libxnet_r.a           spell
+dr                    libasl.a              libctmss_pkcs.a       libkap.a              libs.a                libxti.a              struct
+drivers               libatomic.a           libcur.a              libld.a               libs.a.min            libxti_r.a            style1
+dsinfo                libauthm.a            libcurses.a           liblsp.a              libs_r.a              liby4crypt.a          style2
+dwb                   libbind.a             libcxgb3-rdmav2.so    liblua.a              libsasl.a             libz.a                style3
+eign                  libbind_isc9.a        libdbm.a              liblvm.a              libsasl.exp           lint1                 tabset
+errdead               libblas.a             libdbx.a              liblvup.a             libsasl_gss.a         lint2                 tcl8
+errdemon              libbsd.a              libdecNumber.a        libm.a                libslp.a              livedumpdead          tcl8.6
+errstop               libbsd_r.a            libdes.a              libm_r.a              libslp.a.min          liveupdate            tclConfig.sh
+expect5.45.4          libbz2.a              libdfapiu.a           libmagic.a            libsm.a               llib-lansi            tclooConfig.sh
+explain.d             libc++.a              libdhcp6.a            libmilter.a           libsm_sendmail.a      llib-lansi.ln         terminfo
+expreserve            libc++abi.a           libdiag.a             libmls.a              libsncrypt.a          llib-lc               threads
+exrecover             libc.a                libdl.a               libmlsenc.a           libsnmp.a             llib-lc.ln            tk8.6
+flip                  libc128.a             libdpi20.a            libmlx-rdmav2.so      libsnmpcomm.a         llib-lcrses           tkConfig.sh
+font                  libc_r.a              libdr_chrp.a          libmlxc_v2-rdmav2.so  libsnmpinterfaces.a   llib-lcrses.ln        tmac
+fs                    libc_t.a              libefs.a              libmobte.a            libsnmppriv_ne.a      llib-lm               tpm
+glink.o               libcachemgt.a         libefssys.a           libmpiocmd.a          libsqlite3.a          llib-lm.ln            trcload
+glink64.o             libcdebug.a           liberrlog.a           libmsaa.a             libsrc.a              llib-port             unix.mpm
+glinkl.o              libcfg.a              libewlmplat.a         libmsaa_r.a           libssl.a              llib-port.ln          unix.mpm64
+glinkl64.o            libcfgiscsi.a         libexpect5.42.so      libnck.a              libstanza.a           lpd                   unixtomh
+hba2.mpm              libcfgscsi.a          libexpect5.45.4.so    libnim.a              libstorfwork.a        lpfx                  uucp
+hba2.mpm64            libclic.a             libfontenc.a          libnsl.a              libsvld.a             macros                vacation.def
+inst_updt             libcluster.a          libfrca.a             libnsl_r.a            libsysx.a             makewhatis            vfontedpr
+instl                 libcorcfg.a           libg.a                libodm.a              libtasn1.a            mcr                   vgrindefs
+iocp.exp              libcrypt.a            libg.exp              liboldX.a             libtcl.so             me                    wpars
+lib.b                 libcrypt4769.a        libgai.a              libopencryptoki.a     libtcl8.4.so          methods               xorg
+libC.a                libcrypt4770.a        libgaimisc.a          libpam.a              libtcl8.6.so          mh                    xpass
+libC128.a             libcrypto.a           libgair4.a            libpapi.a             libtclstub8.6.a       microcode
+libC128_r.a           libcrypto.a.min       libha_RMp.a           libpcap.a             libthread.a           mkwhatis
+libC_r.a              libct_acl.a           libha_em.a            libpcap.exp           libtk.so              ms
+libHBAAPI.a           libct_caa.a           libha_em_r.a          libpdiag.a            libtk8.4.so           netsvc
+libICE.a              libct_caacfg.a        libha_gs.a            libperfstat.a         libtk8.6.so           nfs_cntl

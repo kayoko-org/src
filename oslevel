@@ -1,0 +1,97 @@
+#!/bin/ksh
+# @(#)XAI 1.5.5.6 src/bos/usr/bin/oslevel/oslevel.sh, xai_bos73F
+# XAI OSLEVEL - POSIX/Linux implementation of AIX logic
+
+OS_RELEASE="/etc/os-release"
+LPP_CFG="/etc/lppcfg"
+
+usage() {
+    cat <<EOF
+Usage: oslevel [ -l <level> | -g <level> | -q ] [ -r | -s ] [ -f ]
+     -l : List filesets at levels earlier than maintenance level
+          specified by the <level> parameter
+     -g : List filesets at levels later than maintenance level
+          specified by the <level> parameter
+     -q : List names of known maintenance levels
+     -r : Apply all flags to Recommended Maintenance Levels
+     -s : Apply all flags to Service Packs
+     -f : Force cache rebuild
+
+  If no flags are used, the base system software is entirely
+  at or above the maintenance level listed in the output.
+EOF
+    exit 1
+}
+
+get_val() {
+    grep "^$1=" "$OS_RELEASE" | sed "s/^$1=//;s/\"//g"
+}
+
+# Version Comparison Logic (Simplified for Xai)
+# Returns 0 if equal, 1 if $1 > $2, 2 if $1 < $2
+ver_comp() {
+    if [ "$1" == "$2" ]; then return 0; fi
+    if [ "$1" > "$2" ]; then return 1; else return 2; fi
+}
+
+# Flag Init
+sflag=0; rflag=0; qflag=0; fflag=0; llevel=""; glevel=""
+
+while getopts "l:g:qrsf" OPTION; do
+    case $OPTION in
+        l) llevel=$OPTARG ;;
+        g) glevel=$OPTARG ;;
+        q) qflag=1 ;;
+        r) rflag=1 ;;
+        s) sflag=1 ;;
+        f) fflag=1 ;; # Cache rebuild is a no-op on Xai (always live)
+        *) usage ;;
+    esac
+done
+
+# Original Logic: Mutually exclusive flags
+[[ -n "$llevel" && -n "$glevel" ]] && { echo "oslevel: Specify only one of -l, -g, -q"; exit 2; }
+
+# Determine Target Version
+if [ $sflag -eq 1 ]; then
+    TARGET=$(get_val "XAI_SERVICE_PACK")
+    LABEL="Service Pack"
+elif [ $rflag -eq 1 ]; then
+    TARGET=$(get_val "XAI_RECOMMENDED_LEVEL")
+    LABEL="Recommended Maintenance Level"
+else
+    TARGET=$(get_val "VERSION")
+    LABEL="Maintenance Level"
+fi
+
+# 1. Query Mode
+if [ $qflag -eq 1 ]; then
+    echo "Known ${LABEL}s:"
+    echo "$TARGET"
+    exit 0
+fi
+
+# 2. List Downlevel (-l) or UpLevel (-g)
+if [[ -n "$llevel" || -n "$glevel" ]]; then
+    COMP_VER="${llevel:-$glevel}"
+    print "%-40s %-20s %-15s\n" "Fileset" "Actual Level" "Target Level"
+    print "%-40s %-20s %-15s\n" "----------------------------------------" "--------------------" "---------------"
+    
+    while IFS=: read -r lpp current_ver; do
+        [[ "$lpp" == "#"* || -z "$lpp" ]] && continue
+        ver_comp "$current_ver" "$COMP_VER"
+        rc=$?
+        
+        # If -l, show if current < COMP_VER
+        if [[ -n "$llevel" && $rc -eq 2 ]]; then
+            print "%-40s %-20s %-15s\n" "$lpp" "$current_ver" "$COMP_VER"
+        # If -g, show if current > COMP_VER
+        elif [[ -n "$glevel" && $rc -eq 1 ]]; then
+            print "%-40s %-20s %-15s\n" "$lpp" "$current_ver" "$COMP_VER"
+        fi
+    done < "$LPP_CFG"
+    exit 0
+fi
+
+# 3. Default: Just print the version
+echo "$TARGET"

@@ -1,0 +1,17 @@
+root@aix:/> lsattr
+lsattr: 0514-502 Usage error
+        Flag or parameter information is missing: -R -D -E -F.
+
+Usage:
+lsattr {-D[-O]| -E[-O] -P[-O]| -F Format [-Z Character]} -l Name
+        [-a Attribute]...[-H] [-f File]
+lsattr {-D[-O]| -F Format [-Z Character]}{[-c Class][-s Subclass][-t Type]}
+        [-a Attribute]... [-H][-f File]
+lsattr -R {-l Name | [-c Class][-s Subclass][-t Type]} -a Attribute [-H]
+        [-f File]
+lsattr {-l Name | [-c Class][-s Subclass][-t Type]} -o Operation [...]
+        -F Format [-Z Character][-f File][-H]
+lsattr -h
+
+root@aix:/>
+

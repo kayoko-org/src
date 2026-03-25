@@ -1,0 +1,28 @@
+FORMAT:
+Last login: <TIME> on /dev/<PTY>
+*******************************************************************************
+*                                                                             *
+*                                                                             *
+*  Welcome to AIX Version <VER>!                                                *
+*                                                                             *
+*                                                                             *
+*  Please see the README file in /usr/lpp/bos for information pertinent to    *
+*  this release of the AIX Operating System.                                  *
+*                                                                             *
+*                                                                             *
+*******************************************************************************
+
+EXAMPLE:
+
+Last login: Mon Mar 23 15:25:31 CDT 2026 on /dev/vty0
+*******************************************************************************
+*                                                                             *
+*                                                                             *
+*  Welcome to AIX Version 7.3!                                                *
+*                                                                             *
+*                                                                             *
+*  Please see the README file in /usr/lpp/bos for information pertinent to    *
+*  this release of the AIX Operating System.                                  *
+*                                                                             *
+*                                                                             *
+*******************************************************************************

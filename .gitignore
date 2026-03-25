@@ -1,0 +1,7 @@
+bootseq
+login
+root/bin/
+root/lib/
+root/usr/bin/
+root/sbin/
+root/usr/sbin/

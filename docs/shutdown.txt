@@ -1,0 +1,32 @@
+FORMAT:
+root@aix:/srclo.net-trunk/src>
+
+Broadcast message from <user>@<hname> (tty) at <time> ...
+
+PLEASE LOG OFF NOW ! ! !
+System maintenance in progress.
+All processes will be killed now.
+
+
+
+
+Broadcast message from <user>@<hname> (tty) at <TIME> ...
+
+! ! ! SYSTEM BEING BROUGHT DOWN NOW ! ! !
+
+EXAMPLE:
+
+root@aix:/srclo.net-trunk/src>
+
+Broadcast message from root@aix (tty) at 16:33:14 ...
+
+PLEASE LOG OFF NOW ! ! !
+System maintenance in progress.
+All processes will be killed now.
+
+
+
+
+Broadcast message from root@aix (tty) at 16:33:14 ...
+
+! ! ! SYSTEM BEING BROUGHT DOWN NOW ! ! !

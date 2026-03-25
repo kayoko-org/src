@@ -1,0 +1,15 @@
+root@aix:/> df -m
+Filesystem    MB blocks      Free %Used    Iused %Iused Mounted on
+/dev/hd4          96.00      0.00  100%     3001    91% /
+/dev/hd2        2784.00    393.77   86%    44488    33% /usr
+/dev/hd9var      192.00    154.96   20%      948     3% /var
+/dev/hd3         256.00    253.84    1%       36     1% /tmp
+/dev/hd1          32.00     31.63    2%        9     1% /home
+/dev/hd11admin    128.00    127.63    1%        5     1% /admin
+/proc                 -         -    -        -      - /proc
+/dev/hd10opt    1504.00    104.61   94%    16553    39% /opt
+/dev/livedump    256.00    255.64    1%        4     1% /var/adm/ras/livedump
+/dev/rep00      8352.00     39.28  100%     2035    18% /usr/sys/inst.images
+/ahafs                -         -    -       35     1% /aha
+root@aix:/> chfs -a size=+512M /
+Filesystem size changed to 1245184

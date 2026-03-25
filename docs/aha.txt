@@ -1,0 +1,4 @@
+root@aix:/> ls aha
+cluster       cpu           disk          evProds.list  fs            mem           net
+root@aix:/>
+

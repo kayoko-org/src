@@ -1,0 +1,80 @@
+Curses-like? yea..
+
+								System Management
+
+Move cursor to desired item and press Enter.
+
+  Software Installation and Maintenance
+  Software License Management
+  Manage Editions
+  Devices
+  System Storage Management (Physical & Logical Storage)
+  Security & Users
+  Communications Applications and Services
+  Workload Partition Administration
+  Print Spooling
+  Advanced Accounting
+  Problem Determination
+  Manage the AIX Cryptographic Framework
+  Performance & Resource Scheduling
+  System Environments
+  Processes & Subsystems
+  Applications
+  Installation Assistant
+  Electronic Service Agent
+  Using SMIT (information only)
+
+
+
+
+
+
+
+
+
+
+
+
+
+F1=Help                             F2=Refresh                          F3=Cancel                           F8=Image
+F9=Shell                            F10=Exit                            Enter=Do
+
+
+                                                               System Management
+
+Move cursor to desired item and press Enter.
+
+  Software Installation and Maintenance
+  Software License Management
+  Manage Editions
+  Devices
+  System Storage Management (Physical & Logical Storage)
+  Security & Users
+  Communications Applications and Services
+  Workload Partition Administration
+  Print Spooling
+  Advanced Accounting
+  Problem Determination
+  Manage the AIX Cryptographic Framework
+  Performance & Resource Scheduling
+  System Environments
+  Processes & Subsystems
+  Applications
+  Installation Assistant
+  Electronic Service Agent
+  Using SMIT (information only)
+
+
+
+
+                                  +--------------------------------------------------------------------------+
+                                  |                               SHELL ESCAPE                               |
+                                  |                                                                          |
+                                  | Press Enter to proceed to your shell.                                    |
+                                  |     Once in the shell, normal exit will return                           |
+                                  |     you to this application.                                             |
+                                  | Press Cancel to return to the application.                               |
+                                  |                                                                          |
+                                  | F1=Help                 F2=Refresh              F3=Cancel                |
+F1=Help                           | F8=Image                F10=Exit                Enter=Do                 |=Image
+F9=Shell                          +--------------------------------------------------------------------------+

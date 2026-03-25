@@ -1,0 +1,988 @@
+#!/bin/ksh
+# IBM_PROLOG_BEGIN_TAG 
+# This is an automatically generated prolog. 
+#  
+# bos73F src/bos/usr/bin/oslevel/oslevel.sh 1.5.5.6 
+#  
+# Licensed Materials - Property of IBM 
+#  
+# COPYRIGHT International Business Machines Corp. 1993,2025 
+# All Rights Reserved 
+#  
+# US Government Users Restricted Rights - Use, duplication or 
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp. 
+#  
+# IBM_PROLOG_END_TAG 
+# @(#)40        1.5.5.6  src/bos/usr/bin/oslevel/oslevel.sh, cmdswvpd, bos73F, f2025_08A8 2/17/25 01:02:52
+#
+#   COMPONENT_NAME: CMDSWVPD
+#
+#   FUNCTIONS:  usage
+#               toomanylevels
+#               interrupted
+#
+#   ORIGINS: 27
+#
+#
+#   (C) COPYRIGHT International Business Machines Corp. 1993
+#   All Rights Reserved
+#   Licensed Materials - Property of IBM
+#   US Government Users Restricted Rights - Use, duplication or
+#   disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#
+# Print usage message if invalid arguments specified
+#
+
+export PATH=/usr/bin:/usr/sbin
+unalias -a
+umask 133
+
+trap interrupted INT QUIT TERM EXIT
+
+########################################################################
+# Function: getfsfree()  (Get filesystem free space)
+########################################################################
+
+getfsfree()
+{
+   typeset FS="$1"  # File system
+   typeset DF="/usr/bin/df -P"
+   typeset AWK=/usr/bin/awk
+   typeset ERROR='eval /usr/sbin/inuumsg 331 "oslevel:" "getfsfree()"; return 1'
+   [[ -z $FS ]] && $ERROR
+
+   ERROR='eval /usr/sbin/inuumsg 353 "oslevel:" "$FS"; return 1'
+   BUF=$(LC_ALL=C LANG=C $DF $FS/)
+   [[ $? -ne 0 || -z $BUF ]] && $ERROR
+
+   BUF=$(echo "$BUF" | $AWK '{getline; print $4}')
+   RC=$?
+   isnum "$BUF" || $ERROR 
+
+   echo "$BUF"
+   return 0
+
+}  # end of getfsfree()
+
+########################################################################
+## Function: isnum
+## Returns: 0 = STR is all digits 0-9, 1 = STR is not all digits
+########################################################################
+
+isnum()
+{
+   typeset STR="$1"
+   typeset ERROR='eval /usr/sbin/inuumsg 331 "oslevel:" "isnum()"; return 1'
+   typeset COUNT=0
+
+   STR=${STR#-} # remove negative
+   [[ -z "$STR" ]] && return 1
+
+   while [[ -n "$STR" ]]; do
+     [[ "$STR" = "${STR%[0-9]}" ]] && return 1
+     STR=${STR%[0-9]}
+
+     # loop safety
+     (( COUNT = $COUNT + 1 ))
+     [[ $COUNT -gt 40000 ]] && $ERROR
+
+   done
+
+   return 0
+
+}  # end of isnum()
+
+########################################################################
+## Function: check_work_space
+## Returns: 0 / 1
+########################################################################
+
+check_work_space()
+{
+   typeset TARGET="$1"
+   typeset NEED_SPACE="$2"
+   typeset ERROR='eval return 1'
+   typeset BUF
+   typeset DEFICIT
+   typeset RC=0 
+
+   [[ -n $INUBOSTYPE || -n $INUCLIENTS || $NEED_SPACE_MSG -eq 1 ]] && return 0
+
+   [[ -z $TARGET ]] && RC=1
+   isnum $NEED_SPACE || RC=1
+
+   if [[ $RC -ne 0 ]]; then
+      /usr/sbin/inuumsg 331 "oslevel:" "check_work_space()"
+      $ERROR
+   fi
+
+   # Get TARGET's free size
+   BUF=$(getfsfree $TARGET) || $ERROR
+
+   if [[ $NEED_SPACE -gt $BUF ]]; then
+      (( DEFICIT = $NEED_SPACE - $BUF ))
+      /usr/sbin/inuumsg 355 "oslevel:" "/tmp" "$DEFICIT"
+      NEED_SPACE_MSG=1 
+      $ERROR
+   fi
+
+   return 0
+
+}  # check_work_space()
+
+print_min_spack()
+{
+   typeset ERROR='eval /usr/sbin/inuumsg 216 110 >&2; exit 1'
+   typeset BUF
+   typeset lev
+
+   # print out vrm0-00-00 using bos.rte vrmf
+   BUF=$(LC_ALL=C /usr/bin/lslpp -qlc bos.rte | /usr/bin/awk 'FNR <= 1') || $ERROR
+   BUF=$(echo "$BUF" | LC_ALL=C /usr/bin/awk -F: '{split($3,lev,"."); 
+				print lev[1]lev[2]lev[3]"0"; exit(0)}')
+   [[ $? -ne 0 || -z $BUF ]] && $ERROR
+   echo "${BUF}-00-00"
+   return 0
+
+}  # end of print_min_spack()
+
+print_min_rml()
+{
+   typeset ERROR='eval /usr/sbin/inuumsg 216 110 >&2; exit 1'
+   typeset BUF
+   typeset lev
+
+   [[ $recml -ne 1 ]] && return 0
+
+   # There is no RML information, lets print out
+   # VRMF-00.
+   BUF=$(LC_ALL=C /usr/bin/lslpp -qlc bos.rte | /usr/bin/awk 'FNR <= 1') || $ERROR
+   BUF=$(echo "$BUF" | LC_ALL=C awk -F: '{split($3,lev,"."); 
+         print lev[1]lev[2]"00"; exit(0)}')
+   [[ $? -ne 0 || -z $BUF ]] && $ERROR
+   echo "${BUF}-00"
+   return 0
+
+}  # end of print_min_rml()
+
+print_current_ml()
+{
+   typeset lev
+   typeset ERROR='eval /usr/sbin/inuumsg 216 111 >&2; exit 1'
+   BUF=$(LC_ALL=C /usr/bin/lslpp -qlc bos.rte | /usr/bin/awk 'FNR <= 1') || $ERROR
+   BUF=$(echo "$BUF" | LC_ALL=C awk -F: '{split($3,lev,".");
+         print lev[1]"."lev[2]"."lev[3]".0"; exit(0)}')
+   [[ $? -ne 0 || -z $BUF ]] && $ERROR
+   echo "$BUF"
+   return 0
+    
+}  # end of print_current_ml()
+
+loop_create_mlinfo()
+{
+   typeset MAXLOOP=120    # max number we will wait/loop
+   typeset LOCKED=1       # someone else has the lock or not
+   typeset LOOPC          # loop counter
+   typeset RC=0           # return code
+   typeset LOOP=1         # loop conditional variable
+
+   # record original OS_ACT
+   typeset ORIG_OS_ACT=$OS_ACT
+
+   while [[ $LOOP = 1 ]]; do
+
+      (( LOOPC = $LOOPC + 1 ))
+      if [[ $LOOPC -gt $MAXLOOP ]]; then
+         /usr/sbin/inuumsg 212
+         return 1
+      fi
+
+      # reset OS_ACT to original
+      OS_ACT=$ORIG_OS_ACT
+
+#############################################################
+# Check if the -f flag was give. If it was not, go through
+# standard cache checks. If it was we know we will have
+# to rebuild the given cache and invalidate both.
+#############################################################
+
+      if [[ $force_cache_build -ne 1 ]]; then
+
+         # Check if the cache in questions is still good.
+         check_cache $usecache
+         RC=$?
+
+         if [[ $RC -lt 99 ]]; then
+            (( OS_ACT = $OS_ACT + $RC ))
+         else
+            /usr/sbin/inuumsg 215 >&2
+            /usr/sbin/inuumsg 214 >&2
+            return 1
+         fi
+
+      else
+
+         # If force flag used, make sure we invalidate both caches.
+         (( OS_ACT = $OS_ACT + 4 ))
+
+      fi
+
+      # Check that we have enough space in /tmp for work and tmp files.
+      # If we do not, we issue a warning and keep going. The current
+      # default space requirement is 10496 512bb (5.1 megs). The user 
+      # can overwrite the default by setting the OSLEVEL_WORK_SPACE_REQ 
+      # variable.
+      
+      [[ -z $OSLEVEL_WORK_SPACE_REQ ]] && OSLEVEL_WORK_SPACE_REQ=10496   
+      check_work_space /tmp $OSLEVEL_WORK_SPACE_REQ
+      
+      # Run the cache/mlinfo builder. If it fails, we have to quit.
+      # If someone else has the lock, we go to the top of the loop.
+
+      rebuild_cache ; RC=$?
+
+      if [[ $RC -eq $NOLOCK ]]; then
+         /usr/bin/sleep 1
+         continue
+      fi
+        
+      [[ $RC -ne 0 ]] && return 1
+
+      if [[ ! -r $mlinfo && $recml = 1 ]]; then
+         /usr/sbin/inuumsg 216 109 >&2
+         /usr/sbin/inuumsg 214 >&2
+         return 1
+      fi
+
+      # if we got here, then we build mlinfo successfully
+      LOOP=0
+      break
+
+   done
+
+}  # end of loop_create_mlinfo()
+
+rebuild_cache()
+{
+
+   trap '' 1 2 3 
+   typeset rc 
+  
+   # Execute "re-make maint level cache file" 
+   /usr/bin/rm_mlcache_file $UID $GID
+   rc=$?
+
+   [[ $rc -eq $NOLOCK ]] && return $rc
+
+   if [[ $rc -gt 203 && $rc -lt 211 ]]; then
+      /usr/sbin/inuumsg 213 2>&1
+   elif [[ $rc -ne 0 ]]; then
+      /usr/sbin/inuumsg 216 $rc 2>&1 
+      /usr/sbin/inuumsg 214 2>&1
+   fi
+
+   return $rc
+}
+
+check_cache()
+{
+
+   trap interrupted INT QUIT TERM
+
+   # Get the maintenance level information from the fix database
+   # This information is cumulatively refreshed with each maintenance level,
+   # but first check to see if we can reuse old instfix output.  We do this
+   # by making sure the mlcache file exists and has a size greater than 0.
+   # We also do checksum comparisons to see if there have been any
+   # changes since the cache was taken.  The previous sum on USR
+   # part history is kept in MLCACHE_SUM_FILE. 
+   #      
+   # RETURN CODES:
+   #  0 = Rebuild Cache for the given info type (ml or rml)
+   #  2 = No need to rebuild cache 
+   #  4 = Cache sum is not current (remove both), rebuild info type
+   # 99 = A severe error has occurred
+
+
+   # If this force flag is used, then there is no point in
+   # doing the rest. We should not really ever get here
+   # if it is set.. so just in case.               
+ 
+   [ $force_cache_build -gt 0 ] && return 4
+
+   # Init local vars.
+   typeset MLCACHE="$1"
+   typeset MLCACHE_SUM_FILE="$instlib/.oslevel.cache.sum"
+   typeset HISTFILE=/usr/lib/objrepos/history
+   typeset MLCACHE_SUM_OLD=0 
+   typeset MLCACHE_SUM_NEW=0 
+
+   if [ -s "$MLCACHE_SUM_FILE" -a -r "$MLCACHE_SUM_FILE" ]; then
+   
+      # Get the old sum
+      MLCACHE_SUM_OLD=$(cat $MLCACHE_SUM_FILE 2>/dev/null) || return 0
+
+      # Get the new sum
+      MLCACHE_SUM_NEW=$(/usr/bin/sum "$HISTFILE"  2>/dev/null) || return 99
+      MLCACHE_SUM_NEW=${MLCACHE_SUM_NEW%%" "*} || return 99
+
+      # Compare new and old, if they are the same then we do not need
+      # to rebuild cache
+
+      [ "$MLCACHE_SUM_NEW" != "$MLCACHE_SUM_OLD" ] && return 4
+
+   else
+     
+      # The cache sum file is not valid or not there, that means we 
+      # need to create it and invalidate all current caches 
+
+      return 4
+
+   fi
+
+   # If $MLCACHE does not exist or 0 size or not readable, then 
+   # we need to build
+
+   [ -z "$MLCACHE" -o ! -r "$MLCACHE" -o ! -s "$MLCACHE" ] && return 0
+
+   # If we get here, then the current cache is OK to use
+   
+   return 2 
+
+}
+
+get_known_rmls()
+{
+   trap interrupted INT QUIT TERM
+   typeset BUF
+       
+   BUF=$(print_min_rml)
+
+   if [[ ! -s $mlinfo ]]; then
+      KWN_RML_LEVS=$BUF
+      return 0
+   fi
+
+   KWN_RML_LEVS=$( /usr/bin/awk -F: '$1 ~ /_AIX_ML$/ { print $1 }' $mlinfo | \
+                   /usr/bin/sort -r | /usr/bin/uniq)
+ 		
+   if [ $? -ne 0 -o -z "$KWN_RML_LEVS" ]; then
+      /usr/sbin/inuumsg 211 2>&1
+      exit 1
+   fi
+
+   KWN_RML_LEVS="${KWN_RML_LEVS}"
+   return 0
+}
+
+# This function get_known_spacks() gets all service pack related info into
+# KWN_SP_LEVS. Sorting will be done on KWN_SP_LEVS in reverse order so
+# the first SP in the list will be the highest SP available on the machine.
+get_known_spacks()
+{
+   trap interrupted INT QUIT TERM
+   typeset BUF
+   typeset MVRMF
+   typeset SPNO
+   typeset TLNO
+       
+   #MVRMF is used to store the VRMF of the service pack
+   #For new format SP's (ex: 53-07-012312_SP) this will be used to make
+   #53 as 5300 for display purpose.
+   #TLNO will be used to store TL number of a SP
+   #SPNO will be used to distinguish old format SP numbers and new format
+   #SP numbers and this will be used to separate date field from SP number
+   
+   # always report at least the current RML "-00"
+   BUF="$(print_current_rml)-00_SP"
+
+   if [[ ! -s $mlinfo ]]; then
+      KWN_SP_LEVS=$BUF
+      return 0
+   fi
+
+   KWN_SP_LEVS=$( /usr/bin/awk -F: '$1 ~ /_SP$/ { print $1 }' $mlinfo | \
+                   /usr/bin/sort -t- -r | /usr/bin/uniq)
+ 		
+   # Sort current RML into known SP levels
+   KWN_SP_LEVS="$(for i in ${KWN_SP_LEVS} ${BUF}; do echo $i; done | \
+				/usr/bin/sort -t- -r)"
+   
+   #prepare SP's for display  in new SP format
+   KWN_SP_LEVS="$(for i in ${KWN_SP_LEVS} ; do
+	   MVRMF=`echo $i | cut -f 1 -d -`
+	   if [ $MVRMF -lt 100 ]
+	   then
+		  MVRMF=$MVRMF\00
+	   fi
+	   SPNO=`echo $i | cut -f 3 -d -`
+	   SPNO=`echo $SPNO  | cut -f 1 -d _`
+	   if [ $(echo $SPNO | awk '{len=length($1); print len;}') -lt 6 ]
+	   then
+	      SPNO=$SPNO\-0000
+       else
+		  SPNO=$(echo $SPNO | awk '{a=substr($1,0,2); print a;}')\-"$(echo $SPNO |awk '{a=substr($1,3); print a;}')"
+	   fi
+	   TLNO=`echo $i | cut -f 2  -d -`
+	   MVRMF=$MVRMF\-"$TLNO"\-"$SPNO"\_SP
+	   echo $MVRMF
+	   done
+	   )"
+    # sort the SP's in reverse order, highest level SP should be the first SP in the list
+	KWN_SP_LEVS="$(for i in ${KWN_SP_LEVS}; do echo $i; done | \
+			 /usr/bin/sort -t- -r)"
+
+   return 0
+
+} # end of get_known_spacks()
+
+print_current_rml()
+{
+	typeset lev
+	trap interrupted INT QUIT TERM
+
+	get_known_rmls
+	missing_list=$(/bin/grep _AIX_ML $mlinfo | \
+	  grep ":-:" | /usr/bin/awk -F: '{ print $1 }' | /usr/bin/sort -r | \
+	  /usr/bin/uniq )
+        
+	for lev in $(echo "$KWN_RML_LEVS"); do
+		echo "$missing_list" | grep "$lev" > /dev/null 2>&1
+		if [[ $? -ne 0 ]]; then
+	 		echo "${lev%_AIX_ML}"
+			break
+		fi	
+	done
+	
+	return 0
+}
+
+print_current_spack()
+{
+	trap interrupted INT QUIT TERM
+	typeset BUF
+	typeset DVRMF
+	typeset DSPNO
+	typeset DTLNO
+	typeset lev
+
+	get_known_spacks
+	missing_list=$(/bin/grep "_SP:" $mlinfo | /bin/grep ":-:" | \
+           /usr/bin/awk -F: '{ print $1 }' | /usr/bin/sort -r | /usr/bin/uniq )
+        
+	#prepare the missing list to sync with new SP names as did in get_known_spacks
+	missing_list="$(for i in ${missing_list}; do
+		DVRMF=`echo $i | cut -f 1 -d -`
+		if [ $DVRMF -lt 100 ]
+		then
+			DVRMF=$DVRMF\00
+		fi
+		DSPNO=`echo $i | cut -f 3 -d -`
+		DSPNO=`echo $DSPNO  | cut -f 1 -d _`
+
+		if [ $(echo $DSPNO | awk '{len=length($1); print len;}') -lt 6 ]
+		then
+			DSPNO=$DSPNO\-0000
+		else
+			DSPNO=$(echo $DSPNO | awk '{a=substr($1,0,2); print a;}')\-"$(echo $DSPNO |awk '{a=substr($1,3); print a;}')"
+		fi
+
+		DTLNO=`echo $i | cut -f 2  -d -`
+		DVRMF=$DVRMF\-"$DTLNO"\-"$DSPNO"\_SP
+		echo $DVRMF
+		done
+	)"
+	for lev in $(echo "$KWN_SP_LEVS"); do
+		echo "$missing_list" | /bin/grep "$lev" > /dev/null 2>&1
+		if [[ $? -ne 0 ]]; then
+		   # SP level is complete; check if related RML is complete
+		   BUF="$(echo $lev | /usr/bin/sed 's:CSP-0000_SP:00-0000_SP:')"
+		   # Starting with 73F, we introduced SP0. So, this condition
+		   # should be modified to include "YYWW" format to grep out
+		   # the exact TL (ML) level
+		   BUF="$(echo $BUF | /usr/bin/sed 's:..-...._SP:00-0000:')"
+		   echo "$KWN_SP_LEVS" | /usr/bin/grep "$BUF" > /dev/null 2>&1
+		   if [[ $? -ne 0 ]]; then
+		      # related RML not found (not complete) so keep looking
+		      continue
+		   fi
+	 	   echo "${lev%_SP}"
+		   break
+		fi	
+	done
+	
+	return 0
+} # end of print_current_spack()
+
+print_known_rmls()
+{
+	typeset lev
+	trap interrupted INT QUIT TERM
+
+	get_known_rmls
+	/usr/sbin/inuumsg 208
+
+	for lev in $(echo "$KWN_RML_LEVS"); do
+		echo ${lev%_AIX_ML}
+	done
+}
+
+print_known_spacks()
+{
+	typeset lev
+	trap interrupted INT QUIT TERM
+
+	get_known_spacks
+	/usr/sbin/inuumsg 726
+
+	for lev in $(echo "$KWN_SP_LEVS"); do
+		echo ${lev%_SP}
+	done
+} # end of print_known_spacks()
+
+get_diff_spacks()
+{
+	trap interrupted INT QUIT TERM
+
+	# Modify nlevel name format to match with fix db name
+	nlevel=`echo $nlevel | awk -F "-" '{ print substr($1,1,2) "-" $2 "-" $3$4}'`
+
+	drmls_list=$(/bin/grep -E "${SPL}_SP:|${nlevel}_SP:" $mlinfo)
+ 
+	if [ -z "$drmls_list" ]; then
+		/usr/sbin/inuumsg 727 "$SPL" >&2
+		exit 1
+	fi
+        
+        drmls_list=$(echo "$drmls_list" | /bin/grep ":$P_FLAG:" 2> /dev/null)
+
+        # check that there is work to be done
+	if [ -z "$drmls_list" ]; then
+     		exit 0
+ 	fi
+
+	/usr/sbin/inuumsg 725
+
+  	echo "$drmls_list" | /usr/bin/awk -F: '{ 
+   			printf ("%-39s %-18s %-15s\n", $2, $4, $3)  }'
+ 
+ 	if [ $? -ne 0 ]; then
+		/usr/sbin/inuumsg 728 >&2
+		exit 1
+	fi  
+
+	return 0
+} # end of get_diff_spacks()
+
+get_diff_rmls()
+{
+	trap interrupted INT QUIT TERM
+
+	drmls_list=$(/bin/grep "$RML"_AIX_ML $mlinfo)
+ 
+	if [ -z "$drmls_list" ]; then
+		/usr/sbin/inuumsg 209 "$RML" >&2
+		exit 1
+	fi
+        
+        drmls_list=$(echo "$drmls_list" | /bin/grep ":$P_FLAG:" 2> /dev/null)
+
+        # check that there is work to be done
+	if [ -z "$drmls_list" ]; then
+     		exit 0
+ 	fi
+
+	/usr/sbin/inuumsg 207
+
+  	echo "$drmls_list" | awk -F: '{ 
+   			printf ("%-39s %-22s %-15s\n", $2, $4, $3)  }'
+ 
+ 	if [ $? -ne 0 ]; then
+		/usr/sbin/inuumsg 210 >&2
+		exit 1
+	fi  
+
+	return 0
+}
+
+usage () {
+# Message 724 with the updated usage is ready for use in 5.4
+	/usr/sbin/inuumsg 724 2>&1
+	exit 1
+}
+
+#
+# User specified more than one of -l, -g, -q
+#
+toomanylevels () {
+	/usr/sbin/inuumsg 164 2>&1
+	usage
+	exit 2
+}
+
+#
+# User interrupted command
+#
+interrupted () {
+     /usr/bin/rm -f $mlinfo
+     /usr/bin/rm -rf $tmpdir
+}
+
+#
+# Main logic for oslevel
+#
+
+# undocumented flag for debugging
+for opt in $(echo $@)
+do
+        if [ "$opt" = "-D" ]; then
+                set -x
+                for i in $(typeset +f); do typeset -ft $i; done
+        fi
+done
+
+basic=1		# Basic form of output requested
+backward=0	# Backward compatibility for "-g" flag
+downlevel=0	# Products below maintenance level requested
+postlevel=0	# Products updated since maintenance level requested
+recml=0		# Recommended Preventive Maintenace Levels
+spack=0		# Service Packs
+query=0		# Query of known maintenance levels requested
+level=		# Maintenance level specified with -l
+export OS_ACT=0 # Oslevel action variable.
+export NOLOCK=99 # nolock return from rm_mlcache_file
+UID=$(/usr/bin/id -u)
+GID=$(/usr/bin/id -g)
+export force_cache_build=0
+instlib="/tmp/.oslevel.datafiles"
+mlcache="$instlib/.oslevel.mlinfo.cache"
+rmlcache="$instlib/.oslevel.rml.cache"
+tmpdir="/tmp/oslevel.$UID.$$"
+mlinfo="$tmpdir/.oslevel.mlinfo"
+usecache=""
+MLTAG="_AIX_ML"
+mlfound=0
+export NEED_SPACE_MSG=0
+nlevel= 
+
+trap interrupted INT QUIT TERM EXIT
+
+# Test for version 4 or greater
+if [ $(uname -v) -lt 4 ]
+then
+	/usr/sbin/inuumsg 165 2>&1
+	exit 6
+fi
+
+# process valid options, watching for invalid combinations
+
+while getopts ":l:g:fDqrs" OPTION
+do
+	case $OPTION in
+                 D) set -x
+                    for i in $(typeset +f); do typeset -ft $i; done
+                    ;;
+	 	 l) downlevel=1
+		    basic=0
+	 	    level=$OPTARG
+		    P_FLAG="-" 
+		    [ -z "$level" ] && usage
+		    ;;
+		 g) postlevel=1
+		    basic=0
+		    level="$OPTARG"
+		    P_FLAG="+"	
+		    ;;
+		 r) recml=1
+	            ;;		
+		 s) spack=1
+	            ;;		
+	   	 q) query=1
+		    basic=0
+		    ;;
+		 f) force_cache_build=1   
+		    ;;
+		\?) usage
+		    ;;
+		 :) if [ "$OPTARG" = "g" ]; then
+			# backward compatibility for "-g" flag	
+			backward=1	
+			postlevel=1
+			basic=0
+		    else
+			usage
+		    fi	
+		    ;;
+	esac
+done
+
+if [ $backward -eq 1 -a $recml -eq 1 ]; then
+	usage
+fi
+
+if [[ "$level" = "-"* ]]; then
+	usage
+fi
+
+if [ $backward -eq 1 -a $spack -eq 1 ]; then
+	usage
+fi
+
+if [ $spack -eq 1 -a $recml -eq 1 ]; then
+	usage
+fi
+# This causes us to use the RML cache for Service Pack requests.
+# Below we process spack eq 1 before recml eq 1 so that we get the SP logic.
+if [ $spack -eq 1 ]; then
+	recml=1
+fi
+
+[ $(expr $downlevel + $postlevel + $query) -gt 1 ] && toomanylevels
+
+# Here are the variables for OS_ACT
+#   1 = Rebuild ml(release cache) if needed
+#   2 = Rebuild rml if needed
+#   3 = Build mlinfo for ml(release cache) only.
+#   4 = Build mlinfo for rml only.
+#   5 = Cache expired, rebuild ml, remove both
+#   6 = Cache expired, rebuild rml, remove both 
+ 
+# Set the usecashe variable to use the correct cache to check. 
+# usecache is for the check_cache() function
+
+if [[ $recml -ne 1 ]]; then
+   usecache=$mlcache
+   export OS_ACT=1 
+else
+   usecache=$rmlcache
+   export OS_ACT=2  
+fi
+
+loop_create_mlinfo || exit 1
+
+# Process service pack operation.
+if [[ $spack = 1 ]]; then
+	if [[ $downlevel = 1 || $postlevel = 1 ]]; then
+
+	# Save the SP Name to nlevel. level is modified to remove build date
+		nlevel=$level
+		level=`echo $level | cut -f "1 2 3" -d "-"`
+
+####################################################################
+## If this is a diff operation and spack is set, we need to check
+## if they specified the minimal level (vrmf-00-00). If they have,
+## we look for everything above the current_ml (v.r.m.f).
+####################################################################
+ 
+                if [[ "$level" = *"-00-00" ]]; then
+
+                   SPL=$(print_min_spack)
+
+                   if [[ "$SPL" = "$level" ]]; then
+                      # Reset the variables, rebuild the cache, then drop thru.
+                      recml=0 
+                      level=$(print_current_ml)
+                      usecache=$mlcache
+                      OS_ACT=1
+                      loop_create_mlinfo || exit 1
+                   else
+                      SPL="$level"
+                      get_diff_spacks
+                      exit 0
+                   fi
+
+####################################################################
+## If they specified the minimal SP (vrmf-ll-00),
+## we look for everything above the current RML (vrmf-00).
+####################################################################
+
+                elif [[ "$level" = *"-00" ]]; then
+
+                  # Starting with 73F, we introduced SP0, So a format of
+                  # VR00-TL-SP will become VR00-TL-00 for an SP0. Hence, the
+                  # below checks are handled to consider an SP0.
+                  SPL="$(print_current_rml)-00"
+#
+#                   if [[ "$SPL" = "$level" ]]; then
+#                      # just set level and drop thru. Everything else is OK.
+#                      level=$(print_current_rml)
+#                   else
+#                      /usr/sbin/inuumsg 727 "$level" >&2
+#                      exit 1
+#                   fi
+		  get_diff_spacks
+		  exit 0
+
+                else  # $level is not  *"-00"
+ 
+                     SPL="$level"
+                     get_diff_spacks
+                     exit 0
+
+                fi   # end of "$level" = *"-00-00"
+           
+        else
+                if [[ $query = 1 ]]; then
+                        print_known_spacks
+                        exit 0
+                else
+                        print_current_spack
+                        exit 0
+                fi
+        fi
+fi
+
+# Process recommended ml operation.
+if [[ $recml = 1 ]]; then
+	if [[ $downlevel = 1 || $postlevel = 1 ]]; then
+
+####################################################################
+## If this is a diff operation and recml is set, we need to check
+## if they specified the minimal level (VRMF-00). If they have,
+## we look for everything above the current_ml (V.R.M.F).
+####################################################################
+ 
+                RML="$level"
+
+		if [[ "$level" = *"-00" ]]; then
+                   /usr/sbin/inuumsg 209 "$RML" >&2
+                   exit 1
+
+#		   RML=$(print_min_rml)
+
+#                   if [[ "$RML" = "$level" ]]; then
+#                      recml=0 
+#		      level=$(print_current_ml)
+#                      usecache=$mlcache
+#                      OS_ACT=1
+#		      loop_create_mlinfo || exit 1
+#                   else
+#		      RML="$level"
+#		      get_diff_rmls
+#                      exit 0
+#                   fi
+
+                 # Since, there is an SP0 starting with 73F. We dont need the
+                 # below checks
+#                else  # $level is not  *"-00"
+ 
+#                     RML="$level"
+                     get_diff_rmls
+                     exit 0
+
+                fi   # end of "$level" = *"-00"
+           
+        else
+                if [[ $query = 1 ]]; then
+                        print_known_rmls
+                        exit 0
+                else
+                        print_current_rml
+                        exit 0
+                fi
+        fi
+fi
+
+# Process standard release info
+
+if [[ ! -s $mlinfo ]]
+then
+	echo `LC_ALL=C /usr/bin/lslpp -qlc bos.rte | /usr/bin/awk 'FNR <= 1' | cut -d':' -f3 | cut -d'.' -f1-2`.0.0
+	# /usr/sbin/inuumsg 166
+	/usr/bin/rm -f $mlinfo 
+        rm -rf $tmpdir
+	exit 0
+fi
+
+# If level has been specified, make sure it exists
+if [ -n "$level" ] && (cut -d: -f1 $mlinfo | /usr/bin/grep -q "$level$MLTAG$")
+then
+	:
+else
+   if [ -n "$level" ]
+   then
+	/usr/sbin/inuumsg 167 $level 2>&1
+	#/usr/bin/rm $mlinfo
+	exit 1
+   fi
+fi
+
+# If query mode, list the available levels, most recent first, then end.
+if [ $query -eq 1 ]
+then
+	/usr/sbin/inuumsg 168
+	cut -d':' -f1 $mlinfo | sed 's:_AIX_ML::' | sort -n -r -t . | uniq
+        #/usr/bin/rm $mlinfo
+	exit 0
+fi
+
+# Determine most recently complete maintenance level 
+if [ -z "$level" ]
+then
+	# Get list of maintenance levels, most recent first
+	cut -d':' -f1 $mlinfo | sort -n -r -t . | uniq |
+	# Check instfix output to see if any have no downlevel filesets
+	while read ml
+	do
+	   /bin/grep "^$ml" $mlinfo |\
+              /bin/grep -q ":-:"
+	   if [ $? -eq 1 ]
+	   then
+	      level=`echo $ml | sed "s:$MLTAG::"`
+	      # If we're just checking for the most recent complete ML
+	      if [ $basic -eq 1 ]
+	      then
+		 echo $level
+		 exit 0
+	      fi
+	      mlfound=1
+	      break
+	   fi
+	done
+	# If no maintenance levels exist, then we have to punt....
+	if [ $mlfound -eq 0 ]
+	then
+	   baselevel=`LC_ALL=C lslpp -qLc bos.rte | cut -d':' -f3 | cut -d'.' -f1-2`.0.0
+	   if [ $basic -eq 1 ]
+	   then
+	      echo $baselevel
+	      exit 0
+	   elif [ $postlevel -eq 1 ]
+	   then
+	      LC_ALL=C /usr/bin/lslpp -qLc bos.\* printers.\* devices.\* X11.\* 2>/dev/null |
+              /usr/bin/awk -F: -v header=0 -v oslevel="$baselevel" \
+	          '$3 > oslevel {
+           	   if ( header == 0 ) 
+           	   { 
+	       	       system("/usr/sbin/inuumsg 170"); 
+	               header = 1 
+                   }
+                   printf("%-40s%-20s%s\n",$2,$3,oslevel) 
+              }'
+
+	      exit 0
+	   fi
+	fi
+fi
+
+if [[ $postlevel -eq 1 ]]
+then
+   diffsym="+"
+else
+   diffsym="-"
+fi
+
+/bin/grep "^$level$MLTAG:" $mlinfo |\
+   /usr/bin/awk -F: -v header=0 -v diffsymbol="$diffsym" '$5 == diffsymbol {
+           if ( header == 0 ) 
+           { 
+	       system("/usr/sbin/inuumsg 170"); 
+	       header = 1 
+           }
+           printf("%-40s%-20s%s\n",$2,$4,$3) 
+       }'
+
+# Goodbye
+#/usr/bin/rm $mlinfo 
+exit 0

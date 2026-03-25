@@ -1,0 +1,3 @@
+# du -sh /
+du: illegal option -- h
+Usage: du [-a | -s] [-rlkmgx] [ -H | -L ] [name ...]

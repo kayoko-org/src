@@ -1,0 +1,34 @@
+MISSING COMMAND:
+# uanme
+ksh: uanme:  not found
+UNAME:
+# uname
+AIX
+# uname -a
+AIX aix 3 7 00CB96B04B00
+OSLEVEL:
+# oslevel --help
+Usage: oslevel [ -l <level> | -g <level> | -q ] [ -r | -s ] [ -f ]
+     -l : List filesets at levels earlier than maintenance level
+          specified by the <level> parameter
+     -g : List filesets at levels later than maintenance level
+          specified by the <level> parameter
+     -q : List names of known maintenance levels
+     -r : Apply all flags to Recommended Maintenance Levels
+     -s : Apply all flags to Service Packs
+     -f : Force cache rebuild
+
+  If no flags are used, the base system software is entirely
+  at or above the maintenance level listed in the output.
+# oslevel -s
+7300-03-02-2546
+ROOT:
+# ls /
+.Version      admin         bin           etc           lib           mnt           run           tftpboot      unix
+.sh_history   aha           bosinst.data  home          lost+found    opt           sbin          tmp           usr
+.ssh          audit         dev           image.data    lpp           proc          ssl_nimsh     u             var
+# cat .Version
+DATE=20260211190529
+#
+
+DOES IT HAVE AUTOCOMPLETE? NO

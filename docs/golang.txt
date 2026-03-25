@@ -1,0 +1,12 @@
+root@aix:/> perl -MLWP::Simple -e 'getstore("https://go.dev/dl/go1.26.1.aix-ppc64.tar.gz", "go1.26.1.aix-ppc64.tar.gz")'
+root@aix:/> tar xvf go*
+tar: directory checksum error (0 != 65629)
+root@aix:/> tar -xvf go1.26.1.aix-ppc64.tar.gz
+tar: directory checksum error (0 != 65629)
+root@aix:/> ungz
+ksh93: ungz: not found [No such file or directory]
+root@aix:/> gunzip
+gzip: compressed data not read from a terminal. Use -f to force decompression.
+For help, type: gzip -h
+root@aix:/> gunzip go1.26.1.aix-ppc64.tar.gz
+root@aix:/> tar xf go*
