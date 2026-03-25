@@ -42,6 +42,7 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
+"$REAL_CC" -O2 -static -o bootseq bootseq.c -lzstd
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" login.c
 
 # 5. Build SBASE (The Toolchest)
