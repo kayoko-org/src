@@ -160,58 +160,58 @@ void print_long(file_info *f, int max_nlink, int max_size, int max_user, int max
 void list_dir(const char *path, int need_header, int first);
 
 void process_entries(file_info *entries, size_t count, int is_dir_list) {
-    if (count == 0) return;
-    if (!flag_f) qsort(entries, count, sizeof(file_info), compare_entries);
-    
-    int max_nlink = 0, max_size = 0, max_user = 0, max_group = 0, max_block = 0, max_ino = 0;
-    long total_blocks = 0;
+if (count == 0) return;
+if (!flag_f) qsort(entries, count, sizeof(file_info), compare_entries);
 
-    for (size_t i = 0; i < count; i++) {
-        char buf[64];
-        int n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_nlink);
-        if (n > max_nlink) max_nlink = n;
-        n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_size);
-        if (n > max_size) max_size = n;
-        
-        uintmax_t b = (uintmax_t)entries[i].st.st_blocks;
-        if (flag_k) b = (b + 1) / 2;
-        n = snprintf(buf, sizeof(buf), "%ju", b);
-        if (n > max_block) max_block = n;
- 
-        n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_ino);
-        if (n > max_ino) max_ino = n;
-        
-        total_blocks += b;
-        
-        if (!flag_g) {
-            struct passwd *pw = getpwuid(entries[i].st.st_uid);
-            int un = (flag_n || !pw) ? snprintf(buf, sizeof(buf), "%u", entries[i].st.st_uid) : (int)strlen(pw->pw_name);
-            if (un > max_user) max_user = un;
-        }
-        if (!flag_o) {
-            struct group *gr = getgrgid(entries[i].st.st_gid);
-            int gn = (flag_n || !gr) ? snprintf(buf, sizeof(buf), "%u", entries[i].st.st_gid) : (int)strlen(gr->gr_name);
-            if (gn > max_group) max_group = gn;
-        }
-    }
+int max_nlink = 0, max_size = 0, max_user = 0, max_group = 0, max_block = 0, max_ino = 0;
+long total_blocks = 0;
 
-    if (flag_l && is_dir_list) printf("total %ld\n", total_blocks);
+for (size_t i = 0; i < count; i++) {
+char buf[64];
+int n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_nlink);
+if (n > max_nlink) max_nlink = n;
+n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_size);
+if (n > max_size) max_size = n;
 
-    if (flag_l) {
-        for (size_t i = 0; i < count; i++) print_long(&entries[i], max_nlink, max_size, max_user, max_group, max_block);
-    } else if (flag_m) {
-        for (size_t i = 0; i < count; i++) {
-            if (flag_i) printf("%ju ", (uintmax_t)entries[i].st.st_ino);
-            if (flag_s) printf("%ju ", flag_k ? ((uintmax_t)entries[i].st.st_blocks + 1) / 2 : (uintmax_t)entries[i].st.st_blocks);
-            print_name_escaped(entries[i].name);
-            if (i < count - 1) printf(", ");
-        }
-        putchar('\n');
-    } else {
-        /* Multi-column logic (Standard POSIX COLUMNS) */
-        char *col_env = getenv("COLUMNS");
-        int term_width = (col_env) ? atoi(col_env) : 80;
-        if (term_width <= 0) term_width = 80;
+uintmax_t b = (uintmax_t)entries[i].st.st_blocks;
+if (flag_k) b = (b + 1) / 2;
+n = snprintf(buf, sizeof(buf), "%ju", b);
+if (n > max_block) max_block = n;
+
+n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_ino);
+if (n > max_ino) max_ino = n;
+
+total_blocks += b;
+
+if (!flag_g) {
+    struct passwd *pw = getpwuid(entries[i].st.st_uid);
+    int un = (flag_n || !pw) ? snprintf(buf, sizeof(buf), "%u", entries[i].st.st_uid) : (int)strlen(pw->pw_name);
+    if (un > max_user) max_user = un;
+}
+if (!flag_o) {
+    struct group *gr = getgrgid(entries[i].st.st_gid);
+    int gn = (flag_n || !gr) ? snprintf(buf, sizeof(buf), "%u", entries[i].st.st_gid) : (int)strlen(gr->gr_name);
+    if (gn > max_group) max_group = gn;
+}
+}
+
+if (flag_l && is_dir_list) printf("total %ld\n", total_blocks);
+
+if (flag_l) {
+for (size_t i = 0; i < count; i++) print_long(&entries[i], max_nlink, max_size, max_user, max_group, max_block);
+} else if (flag_m) {
+for (size_t i = 0; i < count; i++) {
+    if (flag_i) printf("%ju ", (uintmax_t)entries[i].st.st_ino);
+    if (flag_s) printf("%ju ", flag_k ? ((uintmax_t)entries[i].st.st_blocks + 1) / 2 : (uintmax_t)entries[i].st.st_blocks);
+    print_name_escaped(entries[i].name);
+    if (i < count - 1) printf(", ");
+}
+putchar('\n');
+} else {
+/* Multi-column logic (Standard POSIX COLUMNS) */
+char *col_env = getenv("COLUMNS");
+int term_width = (col_env) ? atoi(col_env) : 80;
+if (term_width <= 0) term_width = 80;
 
         int max_name = 0;
         for (size_t i = 0; i < count; i++) {
@@ -289,7 +289,18 @@ void list_dir(const char *path, int need_header, int first) {
                 continue;
         }
     }
-    
+   
+    if (count >= cap) {
+        cap *= 2;
+        file_info *tmp = realloc(entries, cap * sizeof(file_info));
+        if (!tmp) {
+            perror("ls: out of memory");
+            // Clean up already allocated entries before exiting if desired
+            exit(1); 
+        }
+        entries = tmp;
+    }
+
     entries[count].name = strdup(de->d_name);	
         size_t plen = strlen(path) + strlen(de->d_name) + 2;
         entries[count].fullpath = malloc(plen);
