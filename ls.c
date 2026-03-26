@@ -13,6 +13,7 @@
 
 /* POSIX Standard Flags */
 static int flag_a = 0, flag_l = 0, flag_R = 0, flag_t = 0, flag_F = 0, flag_1 = 0, flag_i = 0;
+static int flag_r = 0, flag_p = 0, flag_d = 0;
 
 /* POSIX Error Formatting: utility_name: operand: message */
 void report_error(const char *path) {
@@ -115,6 +116,13 @@ void list_dir(const char *path, int print_header) {
     /* 2. Sorting Phase (Handles alphabetical and -t) */
     qsort(entries, count, sizeof(file_info), compare_entries);
 
+	    if (flag_r) {
+	    for (size_t i = 0; i < count / 2; i++) {
+	        file_info temp = entries[i];
+	        entries[i] = entries[count - 1 - i];
+	        entries[count - 1 - i] = temp;
+	    }
+	}
     /* 3. Printing Phase */
     if (flag_l && count > 0) printf("total %ld\n", total_blocks);
 
@@ -148,15 +156,16 @@ void list_dir(const char *path, int print_header) {
             printf("%s", entries[i].name);
         }
 
-        if (flag_F) {
-            mode_t m = entries[i].st.st_mode;
-            if (S_ISDIR(m)) putchar('/');
-            else if (S_ISLNK(m)) putchar('@');
-            else if (S_ISFIFO(m)) putchar('|');
-            else if (S_ISSOCK(m)) putchar('=');
-            else if (m & S_IXUSR) putchar('*');
-        }
-
+	if (flag_F) {
+	    mode_t m = entries[i].st.st_mode;
+	    if (S_ISDIR(m)) putchar('/');
+	    else if (S_ISLNK(m)) putchar('@');
+	    else if (S_ISFIFO(m)) putchar('|');
+	    else if (S_ISSOCK(m)) putchar('=');
+	    else if (m & S_IXUSR) putchar('*');
+	} else if (flag_p) {
+	    if (S_ISDIR(entries[i].st.st_mode)) putchar('/');
+	}
         /* Determine spacing: Newline for lists/pipes, Tabs for terminal grid */
         if (flag_l || flag_1 || !isatty(STDOUT_FILENO)) {
             putchar('\n');
@@ -188,7 +197,8 @@ void list_dir(const char *path, int print_header) {
 static int global_exit_status = 0;
 int main(int argc, char *argv[]) {
     int opt;
-    while ((opt = getopt(argc, argv, "alRFti1")) != -1) {
+    /* POSIX compliant flags: -A is removed, -r -p -d added */
+    while ((opt = getopt(argc, argv, "alRFti1rpd")) != -1) {
         switch (opt) {
             case 'a': flag_a = 1; break;
             case 'l': flag_l = 1; break;
@@ -197,44 +207,85 @@ int main(int argc, char *argv[]) {
             case 't': flag_t = 1; break;
             case 'i': flag_i = 1; break;
             case '1': flag_1 = 1; break;
+            case 'r': flag_r = 1; break;
+            case 'p': flag_p = 1; break;
+            case 'd': flag_d = 1; break;
             default:  return 1;
         }
     }
 
     int num_args = argc - optind;
-    
-    /* Default to current directory if no args provided */
+
+    /* If no arguments, we use "." as the default target */
     if (num_args == 0) {
-        list_dir(".", 0);
+        if (flag_d) {
+            /* POSIX: ls -d with no args lists '.' itself */
+            if (flag_i) {
+                struct stat st;
+                if (lstat(".", &st) == 0) printf("%ju ", (uintmax_t)st.st_ino);
+            }
+            printf(".");
+            if (flag_F || flag_p) putchar('/');
+            putchar('\n');
+        } else {
+            list_dir(".", 0);
+        }
     } else {
-        /* Technically, POSIX expects non-directory arguments to be 
-           listed first. To keep it simple but functional:
-        */
+        /* Iterate through all path operands provided */
         for (int i = optind; i < argc; i++) {
             struct stat st;
-            /* Check if the path exists */
             if (lstat(argv[i], &st) != 0) {
                 report_error(argv[i]);
                 global_exit_status = 1;
                 continue;
             }
 
-            /* If it's a directory, we list its contents */
-            if (S_ISDIR(st.st_mode)) {
-                /* Print header if we have multiple arguments */
-                int show_header = (num_args > 1);
-                
-                /* If this isn't the first item being printed, add a newline */
-                if (i > optind) printf("\n");
-                
-                list_dir(argv[i], show_header);
-            } 
-            /* If it's a file, just print the file info directly */
-            else {
-                /* For a truly perfect ls, you'd collect all file-args 
-                   and print them together before starting on directories.
-                */
-                printf("%s\n", argv[i]); 
+            /* The -d logic or file logic: treat the argument as a literal entry */
+            if (flag_d || !S_ISDIR(st.st_mode)) {
+                if (flag_l) {
+                    /* For -l, we print the long format of the argument itself */
+                    char mode_s[11], time_s[20];
+                    struct passwd *pw = getpwuid(st.st_uid);
+                    struct group  *gr = getgrgid(st.st_gid);
+
+                    mode_to_str(st.st_mode, mode_s);
+                    format_time(st.st_mtime, time_s, sizeof(time_s));
+
+                    if (flag_i) printf("%ju ", (uintmax_t)st.st_ino);
+
+                    printf("%s %3ju %-8s %-8s %8ju %s %s",
+                        mode_s, (uintmax_t)st.st_nlink,
+                        pw ? pw->pw_name : "???", gr ? gr->gr_name : "???",
+                        (uintmax_t)st.st_size, time_s, argv[i]);
+
+                    if (S_ISLNK(st.st_mode)) {
+                        char link_target[4096];
+                        ssize_t len = readlink(argv[i], link_target, sizeof(link_target) - 1);
+                        if (len != -1) {
+                            link_target[len] = '\0';
+                            printf(" -> %s", link_target);
+                        }
+                    }
+                } else {
+                    if (flag_i) printf("%ju ", (uintmax_t)st.st_ino);
+                    printf("%s", argv[i]);
+                }
+
+                /* Suffixes for -F and -p */
+                if (flag_F) {
+                    if (S_ISDIR(st.st_mode)) putchar('/');
+                    else if (S_ISLNK(st.st_mode)) putchar('@');
+                    else if (S_ISFIFO(st.st_mode)) putchar('|');
+                    else if (S_ISSOCK(st.st_mode)) putchar('=');
+                    else if (st.st_mode & S_IXUSR) putchar('*');
+                } else if (flag_p && S_ISDIR(st.st_mode)) {
+                    putchar('/');
+                }
+                putchar('\n');
+            } else {
+                /* Standard Directory Listing */
+                if (num_args > 1 && i > optind) printf("\n");
+                list_dir(argv[i], (num_args > 1));
             }
         }
     }
