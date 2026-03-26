@@ -177,7 +177,7 @@ void process_entries(file_info *entries, size_t count, int is_dir_list) {
         if (flag_k) b = (b + 1) / 2;
         n = snprintf(buf, sizeof(buf), "%ju", b);
         if (n > max_block) max_block = n;
-        
+ 
         n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_ino);
         if (n > max_ino) max_ino = n;
         
@@ -223,8 +223,16 @@ void process_entries(file_info *entries, size_t count, int is_dir_list) {
         }
         max_name += 2; 
 
-        int cols = term_width / max_name;
-        if (cols < 1) cols = 1;
+	int cols;
+        if (flag_1) {
+            cols = 1;
+        } else {
+            int term_width = get_terminal_width();
+            cols = term_width / max_name;
+            if (cols < 1) cols = 1;
+        }
+        
+	if (cols < 1) cols = 1;
         int rows = (count + cols - 1) / cols;
 
         for (int r = 0; r < rows; r++) {
@@ -248,8 +256,8 @@ void process_entries(file_info *entries, size_t count, int is_dir_list) {
                             else if (S_ISFIFO(entries[idx].st.st_mode)) { putchar('|'); printed++; }
                             else if (S_ISSOCK(entries[idx].st.st_mode)) { putchar('='); printed++; }
                             else if (entries[idx].st.st_mode & S_IXUSR) { putchar('*'); printed++; }
-                        }
-                    }
+                        	}
+                	    }
                     if (c < cols - 1 && (idx + (flag_x ? 1 : rows) < (int)count)) 
                         printf("%*s", max_name - printed, "");
                 }
@@ -332,9 +340,20 @@ int main(int argc, char *argv[]) {
             case 'F': flag_F = 1; flag_p = 0; break;
             case 'C': flag_C = 1; flag_l = 0; flag_m = 0; flag_x = 0; flag_1 = 0; break;
             default: fprintf(stderr, "usage: ls [-abcdfgiklmnopqrstux1RF] [file ...]\n"); return 1;
-        }
-    }
-    if (!flag_l && !flag_1 && !flag_m && !flag_x && isatty(STDOUT_FILENO)) flag_C = 1;
+	        }
+	    }
+	/* * POSIX default behavior:
+	 * 1. If stdout is a terminal, default is multi-column (-C).
+	 * 2. If stdout is NOT a terminal, default is one-per-line (-1).
+	 * 3. Any explicit flag (-l, -1, -m, -x, -C) overrides these defaults.
+	 */
+	if (!flag_l && !flag_1 && !flag_m && !flag_x && !flag_C) {
+	    if (isatty(STDOUT_FILENO)) {
+	        flag_C = 1;
+	    } else {
+	        flag_1 = 1;
+	    }
+	}
     int num_args = argc - optind;
     if (num_args == 0) {
         if (flag_d) {
