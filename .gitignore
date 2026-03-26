@@ -3,5 +3,6 @@ login
 root/bin/
 root/lib/
 root/usr/bin/
+inst/
 root/sbin/
 root/usr/sbin/

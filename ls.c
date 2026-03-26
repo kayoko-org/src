@@ -19,6 +19,36 @@ void report_error(const char *path) {
     fprintf(stderr, "ls: %s: %s\n", path, strerror(errno));
 }
 
+typedef struct {
+ char *name;
+ struct stat st;
+} file_info;
+
+int compare_entries(const void *a, const void *b) {
+	    const file_info *fa = (file_info *)a;
+	        const file_info *fb = (file_info *)b;
+
+	    if (flag_t) {
+	/* Sort by modification time (newest first) */
+	if (fb->st.st_mtime != fa->st.st_mtime) 
+	return (fb->st.st_mtime > fa->st.st_mtime) - (fb->st.st_mtime < fa->st.st_mtime);
+        }
+    /* Default: Alphabetical sort */
+    return strcmp(fa->name, fb->name);
+}
+
+void format_time(time_t mtime, char *buf, size_t buflen) {
+    struct tm *t = localtime(&mtime);
+    time_t now = time(NULL);
+    /* POSIX rule: if older than 6 months or in the future, show year */
+    if (abs((long)(now - mtime)) > 15768000) {
+        strftime(buf, buflen, "%b %e  %Y", t);
+    } else {
+        strftime(buf, buflen, "%b %e %H:%M", t);
+    }
+}
+
+
 /* POSIX File Mode String (10 characters + null) */
 void mode_to_str(mode_t mode, char *buf) {
     strcpy(buf, "----------");
@@ -45,133 +75,119 @@ void mode_to_str(mode_t mode, char *buf) {
     else if (mode & S_ISVTX) buf[9] = 'T';
 }
 
+
 void list_dir(const char *path, int print_header) {
     DIR *dir = opendir(path);
     if (!dir) {
         report_error(path);
         return;
     }
-    if (print_header) {
-        printf("%s:\n", path);
-    }
+
+    if (print_header) printf("%s:\n", path);
+
+    /* 1. Collection Phase */
+    file_info *entries = NULL;
+    size_t count = 0, capacity = 16;
+    entries = malloc(capacity * sizeof(file_info));
+
     struct dirent *entry;
-    struct stat st;
-    char fpath[1024];
     long total_blocks = 0;
-    int count = 0;
 
-    /* First pass: Calculate total blocks for -l (POSIX requirement) */
-    if (flag_l) {
-        while ((entry = readdir(dir)) != NULL) {
-            if (!flag_a && entry->d_name[0] == '.') continue;
-            snprintf(fpath, sizeof(fpath), "%s/%s", path, entry->d_name);
-            if (lstat(fpath, &st) == 0) {
-                /* POSIX st_blocks is in 512-byte units usually, but ls -l 
-                   traditionally displays the sum of filesystem blocks allocated */
-                total_blocks += st.st_blocks;
-            }
-        }
-        rewinddir(dir);
-        printf("total %ld\n", total_blocks);
-    }
-
-    /* Second pass: Print entries */
     while ((entry = readdir(dir)) != NULL) {
+        /* POSIX: Skip entries starting with dot unless -a is set */
         if (!flag_a && entry->d_name[0] == '.') continue;
 
+        if (count >= capacity) {
+            capacity *= 2;
+            entries = realloc(entries, capacity * sizeof(file_info));
+        }
+
+        char fpath[4096];
         snprintf(fpath, sizeof(fpath), "%s/%s", path, entry->d_name);
-        if (lstat(fpath, &st) != 0) {
-            report_error(entry->d_name);
-            continue;
+        
+        if (lstat(fpath, &entries[count].st) == 0) {
+            entries[count].name = strdup(entry->d_name);
+            total_blocks += entries[count].st.st_blocks;
+            count++;
         }
+    }
 
-        /* 1. Serial Number (-i) */
-        if (flag_i) {
-            printf("%ju ", (uintmax_t)st.st_ino);
-        }
+    /* 2. Sorting Phase (Handles alphabetical and -t) */
+    qsort(entries, count, sizeof(file_info), compare_entries);
 
-        /* 2. Format Core Data */
+    /* 3. Printing Phase */
+    if (flag_l && count > 0) printf("total %ld\n", total_blocks);
+
+    for (size_t i = 0; i < count; i++) {
+        if (flag_i) printf("%ju ", (uintmax_t)entries[i].st.st_ino);
+
         if (flag_l) {
-            char mode_s[11];
-            struct passwd *pw = getpwuid(st.st_uid);
-            struct group  *gr = getgrgid(st.st_gid);
-            char time_s[20];
-            char user_str[32];
-            char group_str[32];
+            char mode_s[11], time_s[20];
+            struct passwd *pw = getpwuid(entries[i].st.st_uid);
+            struct group  *gr = getgrgid(entries[i].st.st_gid);
 
-            /* Resolve UID or use numeric if unknown */
-            if (pw != NULL) {
-                snprintf(user_str, sizeof(user_str), "%s", pw->pw_name);
-            } else {
-                snprintf(user_str, sizeof(user_str), "%u", (unsigned int)st.st_uid);
+            mode_to_str(entries[i].st.st_mode, mode_s);
+            format_time(entries[i].st.st_mtime, time_s, sizeof(time_s));
+
+            printf("%s %3ju %-8s %-8s %8ju %s %s",
+                mode_s, (uintmax_t)entries[i].st.st_nlink,
+                pw ? pw->pw_name : "???", gr ? gr->gr_name : "???",
+                (uintmax_t)entries[i].st.st_size, time_s, entries[i].name);
+
+            /* POSIX: Resolve symbolic links in long format */
+            if (S_ISLNK(entries[i].st.st_mode)) {
+                char link_target[4096], link_path[4096];
+                snprintf(link_path, sizeof(link_path), "%s/%s", path, entries[i].name);
+                ssize_t len = readlink(link_path, link_target, sizeof(link_target) - 1);
+                if (len != -1) {
+                    link_target[len] = '\0';
+                    printf(" -> %s", link_target);
+                }
             }
-
-            /* Resolve GID or use numeric if unknown */
-            if (gr != NULL) {
-                snprintf(group_str, sizeof(group_str), "%s", gr->gr_name);
-            } else {
-                snprintf(group_str, sizeof(group_str), "%u", (unsigned int)st.st_gid);
-            }
-
-            mode_to_str(st.st_mode, mode_s);
-            /* POSIX Date: %b %e %H:%M */
-            strftime(time_s, sizeof(time_s), "%b %e %H:%M", localtime(&st.st_mtime));
-
-            printf("%s %3ld %-8s %-8s %8ld %s %s", 
-                mode_s, (long)st.st_nlink, 
-                user_str, 
-                group_str, 
-                (long)st.st_size, time_s, entry->d_name);
         } else {
-            printf("%s", entry->d_name);
+            printf("%s", entries[i].name);
         }
 
-        /* 3. Classify (-F) */
         if (flag_F) {
-            if (S_ISDIR(st.st_mode))      putchar('/');
-            else if (S_ISLNK(st.st_mode)) putchar('@');
-            else if (S_ISFIFO(st.st_mode)) putchar('|');
-            else if (st.st_mode & S_IXUSR) putchar('*');
+            mode_t m = entries[i].st.st_mode;
+            if (S_ISDIR(m)) putchar('/');
+            else if (S_ISLNK(m)) putchar('@');
+            else if (S_ISFIFO(m)) putchar('|');
+            else if (S_ISSOCK(m)) putchar('=');
+            else if (m & S_IXUSR) putchar('*');
         }
 
-        /* 4. Column/Line Separator */
+        /* Determine spacing: Newline for lists/pipes, Tabs for terminal grid */
         if (flag_l || flag_1 || !isatty(STDOUT_FILENO)) {
             putchar('\n');
         } else {
             putchar('\t');
         }
-        count++;
     }
+    if (!flag_l && !flag_1 && isatty(STDOUT_FILENO) && count > 0) putchar('\n');
 
-    /* Final newline for non-long-format terminal output */
-    if (count > 0 && !flag_l && !flag_1 && isatty(STDOUT_FILENO)) {
-        putchar('\n');
-    }
+    /* 4. Recursion Phase (-R) */
     if (flag_R) {
-        rewinddir(dir);
-        while ((entry = readdir(dir)) != NULL) {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-                continue;
-
-            if (!flag_a && entry->d_name[0] == '.') continue;
-
-            snprintf(fpath, sizeof(fpath), "%s/%s", path, entry->d_name);
-            
-            if (lstat(fpath, &st) == 0 && S_ISDIR(st.st_mode)) {
-                printf("\n"); // POSIX: separate recursive blocks with an empty line
-                list_dir(fpath, 1); 
+        for (size_t i = 0; i < count; i++) {
+            if (S_ISDIR(entries[i].st.st_mode) && 
+                strcmp(entries[i].name, ".") != 0 && strcmp(entries[i].name, "..") != 0) {
+                char next_path[4096];
+                snprintf(next_path, sizeof(next_path), "%s/%s", path, entries[i].name);
+                printf("\n");
+                list_dir(next_path, 1);
             }
         }
     }
+
+    /* Cleanup */
+    for (size_t i = 0; i < count; i++) free(entries[i].name);
+    free(entries);
     closedir(dir);
 }
 
+static int global_exit_status = 0;
 int main(int argc, char *argv[]) {
     int opt;
-    /* Reset optind for safety */
-    optind = 1;
-    
-    /* Only POSIX-defined flags included */
     while ((opt = getopt(argc, argv, "alRFti1")) != -1) {
         switch (opt) {
             case 'a': flag_a = 1; break;
@@ -181,12 +197,48 @@ int main(int argc, char *argv[]) {
             case 't': flag_t = 1; break;
             case 'i': flag_i = 1; break;
             case '1': flag_1 = 1; break;
-            default:  return 1; /* POSIX requires non-zero exit on error */
+            default:  return 1;
         }
     }
 
-    const char *target = (optind < argc) ? argv[optind] : ".";
-    list_dir(target, 0);
+    int num_args = argc - optind;
     
-    return 0;
+    /* Default to current directory if no args provided */
+    if (num_args == 0) {
+        list_dir(".", 0);
+    } else {
+        /* Technically, POSIX expects non-directory arguments to be 
+           listed first. To keep it simple but functional:
+        */
+        for (int i = optind; i < argc; i++) {
+            struct stat st;
+            /* Check if the path exists */
+            if (lstat(argv[i], &st) != 0) {
+                report_error(argv[i]);
+                global_exit_status = 1;
+                continue;
+            }
+
+            /* If it's a directory, we list its contents */
+            if (S_ISDIR(st.st_mode)) {
+                /* Print header if we have multiple arguments */
+                int show_header = (num_args > 1);
+                
+                /* If this isn't the first item being printed, add a newline */
+                if (i > optind) printf("\n");
+                
+                list_dir(argv[i], show_header);
+            } 
+            /* If it's a file, just print the file info directly */
+            else {
+                /* For a truly perfect ls, you'd collect all file-args 
+                   and print them together before starting on directories.
+                */
+                printf("%s\n", argv[i]); 
+            }
+        }
+    }
+
+    return global_exit_status;
 }
+
