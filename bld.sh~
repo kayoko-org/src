@@ -44,7 +44,7 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" login.c
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/bin/ls" ls.c
-"$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" hostname.c
+cp hostname "$XAI_ROOT/usr/bin/hostname"
 
 # 5. Build SBASE (The Toolchest)
 if [ ! -d "$SBASE_DIR" ]; then
