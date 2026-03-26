@@ -102,11 +102,6 @@ echo "--> Updating Libc..."
 cp -P "$OBJ_DIR/lib/libc/libc.so"* "$XAI_ROOT/lib/"
 cp "$OBJ_DIR/lib/libc/libc.a" "$XAI_ROOT/lib/"
 
-# Kernel (Incremental if already built in obj)
-if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
-    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/unix"
-fi
-
 # --- 6. Final Header Sync ---
 echo "--> Syncing Headers to XAI_ROOT..."
 (cd "$NBSD_SRC" && $NBMAKE DESTDIR="$XAI_ROOT" $FLAGS includes)
@@ -122,6 +117,12 @@ if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
     
     (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=XAI)
 fi
+
+# Kernel (Incremental if already built in obj)
+if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
+    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/unix"
+fi
+
 
 
 # 3. Build OKSH (Static shell)
