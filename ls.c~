@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
     }
 
     const char *target = (optind < argc) ? argv[optind] : ".";
-    list_dir(target, 0);
+    list_dir(target);
     
     return 0;
 }
