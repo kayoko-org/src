@@ -1,7 +1,18 @@
 #!/bin/ksh
-# XAI Build Script - POSIX Strict Edition
+# ----------------------------------------------------------------
+# NOTICE: This script is part of a proprietary build process.
+# Unauthorized reproduction or distribution is strictly prohibited.
+# ----------------------------------------------------------------
 set -e
 
+clear
+print "This information system is for authorized use only."
+print "Users have no explicit or implicit expectation of privacy."
+print "All files and data on this system may be intercepted, recorded,"
+print "read, copied, and disclosed by and to authorized personnel."
+print "Unauthorized use may be subject to administrative or legal action."
+print "By continuing, you acknowledge and consent to these terms."
+sleep 5
 # Configuration
 . ./.env
 # 1. Directory Setup (Stripped of /lib64 Linux-isms)
@@ -9,11 +20,32 @@ mkdir -p "$XAI_ROOT/bin" "$XAI_ROOT/sbin" "$XAI_ROOT/lib" "$XAI_ROOT/etc" "$XAI_
 ln -sf ../lib "$XAI_ROOT/usr/lib"
 cp src/cmd/adm/srcmstr "$XAI_ROOT/sbin/init"
 
+# 1. Force Resolve and Export Paths
+# Make sure these are absolute paths and exported for sub-shells
+export XAI_ROOT="${XAI_ROOT:-$(pwd)/root}"
+export OBJ_DIR="${OBJ_DIR:-$(pwd)/root/obj}"
+export TOOL_DIR="${TOOL_DIR:-$(pwd)/root/tools}"
+export DESTDIR="$OBJ_DIR/destdir.$ARCH"
+
+
 REAL_CC="cc"
 export CC="$REAL_CC"
 export LDFLAGS="-static" 
 export CFLAGS="-I$_INST/include"
-BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
+export BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
+export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
+export FLAGS="DESTDIR=$DESTDIR UNPRIVILEGED=no MKUNPRIVILEGED=no"
+
+# 2. Safety Check: If DESTDIR is still empty or somehow root, ABORT.
+if [ -z "$DESTDIR" ] || [ "$DESTDIR" = "/" ]; then
+    echo "ERROR: DESTDIR is invalid ($DESTDIR). Aborting for system safety."
+    exit 1
+fi
+
+# 3. Now define FLAGS using the resolved variables
+export FLAGS="DESTDIR=$DESTDIR UNPRIVILEGED=no MKUNPRIVILEGED=no"
+export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
+
 # 1. Build the "Tools" (Compiler/Linker/Make)
 
 # This only needs to happen once. It prevents all header skew.
@@ -23,77 +55,62 @@ if [ ! -d "$NBSD_SRC/.git" ]; then
 fi
 
 # --- 2. Xai Branding ---
-echo "--> Applying Xai Branding to Source"
-# Change the OS name reported by uname -s / uname -a
-sed -i 's/ostype=NetBSD/ostype=Xai/' "$NBSD_SRC/sys/conf/newvers.sh"
-# Update param.h for internal consistency
-sed -i 's/"NetBSD"/"Xai"/' "$NBSD_SRC/sys/sys/param.h"
-
-# --- 3. Incremental Build Sequence ---
-NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
-DESTDIR="$OBJ_DIR/destdir.$ARCH"
-
-# 1. Tools Check
 if [ ! -x "$NBMAKE" ]; then
     echo "--> Tools missing. Building NetBSD Toolchain..."
     (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" tools)
 fi
 
-# 2. Prepare System Root
-mkdir -p "$DESTDIR"
+# --- 2. Branding (Only if changed) ---
+# We use a marker file to avoid unnecessary sed runs
+if [ ! -f "$NBSD_SRC/.xai_branded" ]; then
+    echo "--> Applying Xai Branding..."
+    sed -i 's/ostype=NetBSD/ostype=Xai/' "$NBSD_SRC/sys/conf/newvers.sh"
+    sed -i 's/"NetBSD"/"Xai"/' "$NBSD_SRC/sys/sys/param.h"
+    touch "$NBSD_SRC/.xai_branded"
+fi
 
-# 1. This creates the /usr/include/arpa etc. tree
-(cd "$NBSD_SRC/etc" && \
-    $NBMAKE DESTDIR="$DESTDIR" distrib-dirs UNPRIVILEGED=no MKUNPRIVILEGED=no)
+# Helper function for incremental component builds
+build_component() {
+    dir=$1
+    echo "--> Building $dir..."
+    (cd "$NBSD_SRC/$dir" && \
+        [ -d "obj" ] || $NBMAKE $FLAGS obj && \
+        [ -f "obj/.depend" ] || $NBMAKE $FLAGS depend && \
+        $NBMAKE $FLAGS -j"$NPROCS" all && \
+        $NBMAKE $FLAGS install)
+}
 
+# --- 3. The Build Chain ---
 
-# 3. Populate Headers 
-# We explicitly tell nbmake that we are NOT in unprivileged mode
-echo "--> Installing headers..."
-(cd "$NBSD_SRC" && \
-    $NBMAKE includes DESTDIR="$DESTDIR" UNPRIVILEGED=no MKUNPRIVILEGED=no)
+# Headers and Dirs (Fast, but necessary)
+(cd "$NBSD_SRC/etc" && $NBMAKE $FLAGS distrib-dirs)
+(cd "$NBSD_SRC" && $NBMAKE $FLAGS includes)
 
-echo "--> Building C Startup (CSU) objects..."
-(cd "$NBSD_SRC/lib/csu" && \
-    $NBMAKE obj && \
-    $NBMAKE depend && \
-    $NBMAKE -j"$NPROCS" $COMMON_FLAGS && \
-    $NBMAKE install $COMMON_FLAGS)
+# Core Components
+build_component "lib/csu"
+build_component "external/gpl3/gcc/lib/libgcc"
 
-echo "--> Installing Compiler Support Libraries (libgcc)..."
-# libgcc is often part of the 'external' or 'lib' depending on NetBSD version
-# But the most reliable incremental way is hitting the 'lib' sub-dirs
-for dir in lib/libgcc_s lib/libcompiler_rt; do
-    if [ -d "$NBSD_SRC/$dir" ]; then
-        echo "--> Building $dir..."
-        (cd "$NBSD_SRC/$dir" && \
-            $NBMAKE obj && \
-            $NBMAKE depend && \
-            $NBMAKE -j"$NPROCS" $COMMON_FLAGS && \
-            $NBMAKE install $COMMON_FLAGS)
-    fi
-done
-
-# 4. Libc Increment
+# Libc (The heavy lifter)
 echo "--> Updating Libc..."
 (cd "$NBSD_SRC/lib/libc" && \
-    $NBMAKE obj && \
-    $NBMAKE depend && \
-    $NBMAKE -j"$NPROCS" DESTDIR="$DESTDIR" UNPRIVILEGED=no MKUNPRIVILEGED=no)
+    [ -d "obj" ] || $NBMAKE $FLAGS obj && \
+    [ -f "obj/.depend" ] || $NBMAKE $FLAGS depend && \
+    $NBMAKE $FLAGS -j"$NPROCS" all) # We skip 'install' to manage XAI_ROOT manually
 
-# Copy Kernel
-cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/unix"
+# --- 4. Artifact Extraction ---
+# Use 'cp -u' (update) if your system supports it, or just standard cp
+# because copying is fast compared to compiling.
+cp -P "$OBJ_DIR/lib/libc/libc.so"* "$XAI_ROOT/lib/"
+cp "$OBJ_DIR/lib/libc/libc.a" "$XAI_ROOT/lib/"
 
-# Copy Libc specifically from the OBJ tree
-# NetBSD puts built libs in the OBJDIR equivalent of the source path
-LIBC_OBJ_DIR="$OBJ_DIR/lib/libc"
-find "$LIBC_OBJ_DIR" -name "libc.so*" -exec cp -P {} "$XAI_ROOT/lib/" \;
-find "$LIBC_OBJ_DIR" -name "libc.a" -exec cp {} "$XAI_ROOT/lib/" \;
+# Kernel (Incremental if already built in obj)
+if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
+    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/unix"
+fi
 
-# Optional: If you want to compile against your new XAI libc later, 
-# you'll need the headers in your XAI_ROOT
-echo "--> Installing System Headers to XAI_ROOT..."
-(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U installincludes DESTDIR="$XAI_ROOT")
+# --- 6. Final Header Sync ---
+echo "--> Syncing Headers to XAI_ROOT..."
+(cd "$NBSD_SRC" && $NBMAKE DESTDIR="$XAI_ROOT" $FLAGS includes)
 
 # 3. Build OKSH (Static shell)
 if [ ! -x "$OKSH_DIR/oksh" ]; then
@@ -168,3 +185,5 @@ fi
 
 
 cp -Rp "$_INST"/* "$XAI_ROOT/usr/"
+
+echo "--> Build Complete."
