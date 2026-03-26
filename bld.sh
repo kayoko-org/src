@@ -111,6 +111,19 @@ fi
 echo "--> Syncing Headers to XAI_ROOT..."
 (cd "$NBSD_SRC" && $NBMAKE DESTDIR="$XAI_ROOT" $FLAGS includes)
 
+# --- 3.5 Build the Kernel ---
+# Note: We use the custom "XAI" config name here
+if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
+    echo "--> Building Custom Xai Kernel..."
+    # If you haven't created a 'XAI' config file yet, we'll use GENERIC as a base
+    if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAI" ]; then
+        cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAI"
+    fi
+    
+    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=XAI)
+fi
+
+
 # 3. Build OKSH (Static shell)
 if [ ! -x "$OKSH_DIR/oksh" ]; then
     [ -d "$OKSH_DIR" ] || git clone https://github.com/ibara/oksh.git "$OKSH_DIR"
