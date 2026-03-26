@@ -102,7 +102,7 @@ int main() {
             setenv("SHELL", shell, 1);
             setenv("USER", pw->pw_name, 1);
             setenv("LOGNAME", pw->pw_name, 1);
-            setenv("PATH", "/bin:/usr/bin", 0);
+            setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 0);
 
             // 4. Exec as Login Shell (the '-' prefix)
             execl(shell, "-ksh", (char *)NULL);

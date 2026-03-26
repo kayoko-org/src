@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     
     // Case: Too many arguments
     else {
-        fprintf(stderr, "hostname: usage: hostname [name]\n");
+        fprintf(stderr, "usage: hostname [...]\n");
         return 1;
     }
 
