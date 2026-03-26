@@ -6,10 +6,8 @@ set -e
 XAI_ROOT="$(pwd)/root"
 SBASE_DIR="$HOME/sbase"
 OKSH_DIR="$HOME/oksh"
-MUSL_VER="1.2.5"
-MUSL_DIR="$HOME/musl-$MUSL_VER"
-MUSL_INST="$HOME/musl_out"
-
+_VER="1.2.5"
+_INST="$(pwd)/inst"
 # 0. POSIX check for parallelism
 # Replaces GNU 'nproc'
 NPROCS=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
@@ -19,16 +17,10 @@ mkdir -p "$XAI_ROOT/bin" "$XAI_ROOT/sbin" "$XAI_ROOT/lib" "$XAI_ROOT/etc" "$XAI_
 ln -sf ../lib "$XAI_ROOT/usr/lib"
 cp srcmstr "$XAI_ROOT/sbin/init"
 
-# 2. Build musl libc
-if [ ! -d "$MUSL_INST" ]; then
-    [ -f "musl-$MUSL_VER.tar.gz" ] || curl -O https://musl.libc.org/releases/musl-$MUSL_VER.tar.gz
-    [ -d "$MUSL_DIR" ] || tar -xf musl-$MUSL_VER.tar.gz -C "$HOME"
-    (cd "$MUSL_DIR" && ./configure --prefix="$MUSL_INST" --syslibdir="$MUSL_INST/lib" && make -j"$NPROCS" && make install)
-fi
-REAL_CC="$MUSL_INST/bin/musl-gcc"
+REAL_CC="cc"
 export CC="$REAL_CC"
 export LDFLAGS="-static" 
-export CFLAGS="-I$MUSL_INST/include"
+export CFLAGS="-I$_INST/include"
 
 
 # 3. Build OKSH (Static shell)
@@ -44,6 +36,7 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" login.c
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/bin/ls" ls.c
+mkdir -p "$XAI_ROOT/usr/bin"
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" hostname.c
 
 # 5. Build SBASE (The Toolchest)
@@ -55,45 +48,16 @@ fi
 
 # 6. Populate /bin (POSIX tools only)
 install -m 755 "$SBASE_DIR/sbase-box" "$XAI_ROOT/bin/.utils"
-for tool in cat whoami touch tr true tar grep sed awk pwd mkdir cp mv rm; do
+for tool in cat whoami touch tr true tar grep uname sed awk pwd mkdir cp mv rm; do
     (cd "$XAI_ROOT/bin" && ln -sf .utils "$tool")
-done
-
-UBASE_DIR="$HOME/ubase"
-
-if [ ! -d "$UBASE_DIR" ]; then
-    git clone https://git.suckless.org/ubase "$UBASE_DIR"
-fi
-
-# We use musl-gcc to ensure ubase is built against your distro's libc
-(cd "$UBASE_DIR" && \
-    make CC="$MUSL_INST/bin/musl-gcc" \
-         LDFLAGS="-static" \
-         ubase-box)
-
-# Populate /bin and /sbin with ubase tools
-install -m 755 "$UBASE_DIR/ubase-box" "$XAI_ROOT/bin/.ubase-utils"
-
-# Critical tools for your srcmstr and init
-for tool in blkdiscard chvt clear ctrlaltdel dd df dmesg eject fallocate free freeramdisk fsfreeze getty halt hwclock id insmod killall5 last lastlog login lsmod lsusb mesg mknod mkswap mount mountpoint nologin pagesize passwd pidof pivot_root ps pwdx readahead respawn rmmod stat su swaplabel swapoff swapon switch_root sysctl truncate umount unshare uptime vtallow watch who; do
-    (cd "$XAI_ROOT/bin" && ln -sf .ubase-utils "$tool")
-done
-
-# AIX-specific location for some admin tools
-for stool in hwclock swapon swapoff; do
-    (cd "$XAI_ROOT/sbin" && ln -sf ../bin/.ubase-utils "$stool")
 done
 
 # 7. Build the AIX Identity Shim & Uname
 # We link uname specifically to /lib/libc.so
-"$REAL_CC" -fPIC -shared -O2 -o "$XAI_ROOT/lib/libkstat.so" libkstat.c
-"$REAL_CC" -O2 -o "$XAI_ROOT/bin/uname" uname.c -Wl,-dynamic-linker,/lib/libc.so
 
 # 8. Finalize Library Layout
-# Move musl into the primary /lib/libc.so slot
-cp "$MUSL_INST/lib/libc.so" "$XAI_ROOT/lib/libc.so"
-# This is the critical link for all dynamic musl binaries
-(cd "$XAI_ROOT/lib" && ln -sf libc.so ld-musl-x86_64.so.1)
+LIBC="/usr/lib/libc.so.102.0"
+cp "$LIBC" "$XAI_ROOT/lib/libc.so"
 
 # 9. Environment Setup
 cat <<EOF > "$XAI_ROOT/etc/profile"
@@ -129,40 +93,12 @@ EOF
 NCURSES_VER="6.4"
 if [ ! -d "$HOME/ncurses-$NCURSES_VER" ]; then
     curl -o ~/ncurses-$NCURSES_VER.tar.gz https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$NCURSES_VER.tar.gz
-    tar -xf ~/ncurses-$NCURSES_VER.tar.gz -C "$HOME"
+    tar -xzf ~/ncurses-$NCURSES_VER.tar.gz -C "$HOME"
     (cd "$HOME/ncurses-$NCURSES_VER" && \
-     ./configure --prefix="$MUSL_INST" \
+     ./configure --prefix="$_INST" \
                  --without-ada --without-tests --without-debug \
                  --enable-widec --enable-static && \
      make -j"$NPROCS" && make install)
-fi
-
-LIBMD_VER="1.1.0"
-if [ ! -d "$HOME/libmd-$LIBMD_VER" ]; then
-    curl -O https://archive.hadrons.org/software/libmd/libmd-$LIBMD_VER.tar.xz
-    tar -xf libmd-$LIBMD_VER.tar.xz -C "$HOME"
-	(cd "$HOME/libmd-1.1.0" && \
-	 ./configure --prefix="$MUSL_INST" \
-             --libdir="$MUSL_INST/lib" \
-             --disable-shared --enable-static && \
-	 make -j"$NPROCS" && make install)
-fi
-
-LIBBSD_VER="0.12.2"
-if [ ! -d "$HOME/libbsd-$LIBBSD_VER" ]; then
-    [ -f "libbsd-$LIBBSD_VER.tar.xz" ] || curl -O https://libbsd.freedesktop.org/releases/libbsd-$LIBBSD_VER.tar.xz
-    [ -d "$HOME/libbsd-$LIBBSD_VER" ] || tar -xf libbsd-$LIBBSD_VER.tar.xz -C "$HOME"
-(cd "$HOME/libbsd-0.12.2" && \
- ./configure --prefix="$MUSL_INST" \
-             --build=x86_64-pc-linux-gnu \
-             --host=x86_64-linux-musl \
-             --disable-shared --enable-static \
-             CC="$MUSL_INST/bin/musl-gcc" \
-             LIBMD_CFLAGS="-I$MUSL_INST/include" \
-             LIBMD_LIBS="-L$MUSL_INST/lib -lmd" \
-             CPPFLAGS="-I$MUSL_INST/include" \
-             LDFLAGS="-L$MUSL_INST/lib" && \
- make -j"$NPROCS" && make install)
 fi
 
 
@@ -170,8 +106,7 @@ if [ ! -x "$XAI_ROOT/usr/bin/vi" ]; then
     [ -d "$HOME/neatvi" ] || git clone https://github.com/aligrudi/neatvi.git "$HOME/neatvi"
     
     (cd "$HOME/neatvi" && \
-     "$MUSL_INST/bin/musl-gcc" -static -O2 -o vi \
-        vi.c ex.c lbuf.c mot.c sbuf.c ren.c dir.c syn.c reg.c led.c uc.c term.c conf.c \
+     "$CC" -static -O2 -o vi vi.c ex.c lbuf.c mot.c sbuf.c ren.c dir.c syn.c reg.c led.c uc.c term.c conf.c \
         rset.c rstr.c tag.c cmd.c regex.c && \
      install -D -m 755 vi "$XAI_ROOT/usr/bin/vi" && \
      ln -sf vi "$XAI_ROOT/usr/bin/ex" && \

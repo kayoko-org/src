@@ -1,5 +1,0 @@
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin
-export HOME=/root
-export LD_PRELOAD=/lib/libkstat.so
-# AIX-style prompt
-export PS1='$(whoami)@$(hostname):$(pwd)> '
