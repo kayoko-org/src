@@ -26,7 +26,7 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
-"$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/core/adm/login.c
+"$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/cmd/adm/login.c
 "$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/ls" src/cmd/core/ls.c
 
 mkdir -p "$XAI_ROOT/usr/bin"
