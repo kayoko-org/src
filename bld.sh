@@ -187,3 +187,54 @@ fi
 cp -Rp "$_INST"/* "$XAI_ROOT/usr/"
 
 echo "--> Build Complete."
+
+sleep 2
+
+print "--> Building bootloader (EFI)"
+
+(cd "$NBSD_SRC/sys/arch/i386/stand/efiboot/bootx64" && \
+    $NBMAKE obj && $NBMAKE depend && $NBMAKE && \
+    cp -v "$OBJ_DIR/sys/arch/i386/stand/efiboot/bootx64/bootx64.efi" "$EFI_STAGING/EFI/BOOT/BOOTX64.EFI")
+
+# --- 11. Manual UEFI Image Generation (No Infra) ---
+# --- Variables for GPT Image Construction ---
+
+# The final output filename (UEFI branded)
+XAI_USB_FINAL="$OBJ_DIR/xai-uefi-$(date +%Y%m%d).img"
+
+# Intermediate partition files (the "bricks" for the image)
+EFI_IMG="$OBJ_DIR/efi.part"
+ROOT_IMG="$OBJ_DIR/root.part"
+
+# Path to the cross-compiled GPT tool
+NBGPT="$TOOL_DIR/bin/nbgpt"
+
+# Ensure OBJ_DIR exists
+mkdir -p "$OBJ_DIR"
+
+# 4. Combine into a GPT Disk Image
+echo "--> Initializing GPT Image..."
+# Create a 2.5GB blank file using dd since truncate is missing
+dd if=/dev/zero of="$XAI_USB_FINAL" bs=1m count=2500
+
+"$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" create
+"$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" add -t efi -s 32m
+"$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" add -t ffs -i 2
+
+# 5. Extract offsets safely
+# We use 'nbgpt show' and parse it carefully
+EFI_START=$("$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" show | grep "EFI System" | awk '{print $1}')
+ROOT_START=$("$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" show | grep "NetBSD FFS" | awk '{print $1}')
+
+# Check if we actually got numbers back to avoid 'no value specified for seek'
+if [ -z "$EFI_START" ] || [ -z "$ROOT_START" ]; then
+    echo "ERROR: Could not determine GPT offsets."
+    exit 1
+fi
+
+echo "--> Writing partitions at offsets: EFI=$EFI_START, ROOT=$ROOT_START"
+dd if="$EFI_IMG" of="$XAI_USB_FINAL" bs=512 seek="$EFI_START" conv=notrunc
+dd if="$ROOT_IMG" of="$XAI_USB_FINAL" bs=512 seek="$ROOT_START" conv=notrunc
+
+echo "--> $XAI_USB_FINAL"
+
