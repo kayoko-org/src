@@ -63,7 +63,11 @@ void list_dir(const char *path) {
         while ((entry = readdir(dir)) != NULL) {
             if (!flag_a && entry->d_name[0] == '.') continue;
             snprintf(fpath, sizeof(fpath), "%s/%s", path, entry->d_name);
-            if (lstat(fpath, &st) == 0) total_blocks += st.st_blocks;
+            if (lstat(fpath, &st) == 0) {
+                /* POSIX st_blocks is in 512-byte units usually, but ls -l 
+                   traditionally displays the sum of filesystem blocks allocated */
+                total_blocks += st.st_blocks;
+            }
         }
         rewinddir(dir);
         printf("total %ld\n", total_blocks);
@@ -90,15 +94,31 @@ void list_dir(const char *path) {
             struct passwd *pw = getpwuid(st.st_uid);
             struct group  *gr = getgrgid(st.st_gid);
             char time_s[20];
+            char user_str[32];
+            char group_str[32];
+
+            /* Resolve UID or use numeric if unknown */
+            if (pw != NULL) {
+                snprintf(user_str, sizeof(user_str), "%s", pw->pw_name);
+            } else {
+                snprintf(user_str, sizeof(user_str), "%u", (unsigned int)st.st_uid);
+            }
+
+            /* Resolve GID or use numeric if unknown */
+            if (gr != NULL) {
+                snprintf(group_str, sizeof(group_str), "%s", gr->gr_name);
+            } else {
+                snprintf(group_str, sizeof(group_str), "%u", (unsigned int)st.st_gid);
+            }
 
             mode_to_str(st.st_mode, mode_s);
             /* POSIX Date: %b %e %H:%M */
             strftime(time_s, sizeof(time_s), "%b %e %H:%M", localtime(&st.st_mtime));
 
-            printf("%s %3ld %s %s %8ld %s %s", 
+            printf("%s %3ld %-8s %-8s %8ld %s %s", 
                 mode_s, (long)st.st_nlink, 
-                pw ? pw->pw_name : "unknown", 
-                gr ? gr->gr_name : "unknown", 
+                user_str, 
+                group_str, 
                 (long)st.st_size, time_s, entry->d_name);
         } else {
             printf("%s", entry->d_name);
@@ -121,6 +141,7 @@ void list_dir(const char *path) {
         count++;
     }
 
+    /* Final newline for non-long-format terminal output */
     if (count > 0 && !flag_l && !flag_1 && isatty(STDOUT_FILENO)) {
         putchar('\n');
     }
@@ -130,6 +151,9 @@ void list_dir(const char *path) {
 
 int main(int argc, char *argv[]) {
     int opt;
+    /* Reset optind for safety */
+    optind = 1;
+    
     /* Only POSIX-defined flags included */
     while ((opt = getopt(argc, argv, "alRFti1")) != -1) {
         switch (opt) {
