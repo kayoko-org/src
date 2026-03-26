@@ -17,7 +17,7 @@ static int flag_a = 0, flag_b = 0, flag_c = 0, flag_d = 0, flag_f = 0;
 static int flag_g = 0, flag_i = 0, flag_k = 0, flag_l = 0, flag_m = 0;
 static int flag_n = 0, flag_o = 0, flag_p = 0, flag_q = 0, flag_r = 0;
 static int flag_s = 0, flag_t = 0, flag_u = 0, flag_x = 0, flag_1 = 0;
-static int flag_R = 0, flag_F = 0, flag_C = 0;
+static int flag_R = 0, flag_F = 0, flag_A = 0, flag_C = 0;
 static int global_exit_status = 0;
 
 typedef struct {
@@ -277,9 +277,20 @@ void list_dir(const char *path, int need_header, int first) {
     file_info *entries = malloc(cap * sizeof(file_info));
     struct dirent *de;
     while ((de = readdir(d)) != NULL) {
-        if (!flag_a && de->d_name[0] == '.') continue;
-        if (count >= cap) { cap *= 2; entries = realloc(entries, cap * sizeof(file_info)); }
-        entries[count].name = strdup(de->d_name);
+    /* POSIX logic for -a and -A */
+    if (!flag_a) {
+        if (flag_A) {
+            // -A: Hide ONLY "." and ".."
+            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) 
+                continue;
+        } else {
+            // Default: Hide anything starting with "."
+            if (de->d_name[0] == '.') 
+                continue;
+        }
+    }
+    
+    entries[count].name = strdup(de->d_name);	
         size_t plen = strlen(path) + strlen(de->d_name) + 2;
         entries[count].fullpath = malloc(plen);
         snprintf(entries[count].fullpath, plen, "%s/%s", path, de->d_name);
@@ -314,7 +325,7 @@ void list_dir(const char *path, int need_header, int first) {
 
 int main(int argc, char *argv[]) {
     int opt;
-    while ((opt = getopt(argc, argv, "abcdfgiklmnopqrstux1RFCR")) != -1) {
+    while ((opt = getopt(argc, argv, "Aabcdfgiklmnopqrstux1RFC")) != -1) {
         switch (opt) {
             case 'a': flag_a = 1; break;
             case 'b': flag_b = 1; flag_q = 0; break;
@@ -332,6 +343,7 @@ int main(int argc, char *argv[]) {
             case 'q': flag_q = 1; flag_b = 0; break;
             case 'r': flag_r = 1; break;
             case 's': flag_s = 1; break;
+            case 'A': flag_A = 1; break;
             case 't': flag_t = 1; break;
             case 'u': flag_u = 1; flag_c = 0; break;
             case 'x': flag_x = 1; flag_C = 0; flag_l = 0; flag_m = 0; flag_1 = 0; break;
@@ -339,7 +351,7 @@ int main(int argc, char *argv[]) {
             case 'R': flag_R = 1; break;
             case 'F': flag_F = 1; flag_p = 0; break;
             case 'C': flag_C = 1; flag_l = 0; flag_m = 0; flag_x = 0; flag_1 = 0; break;
-            default: fprintf(stderr, "usage: ls [-abcdfgiklmnopqrstux1RF] [file ...]\n"); return 1;
+            default: fprintf(stderr, "usage: ls [-Aabcdfgiklmnopqrstux1RFC] [file ...]\n"); return 1;
 	        }
 	    }
 	/* * POSIX default behavior:
