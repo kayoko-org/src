@@ -64,7 +64,7 @@ fi
 # We use a marker file to avoid unnecessary sed runs
 if [ ! -f "$NBSD_SRC/.xai_branded" ]; then
     echo "--> Applying Xai Branding..."
-    sed -i 's/ost="NetBSD"/ost="XAI"/' "$NBSD_SRC"/src/sys/conf/newvers.sh
+    sed -i 's/ost="NetBSD"/ost="XAI"/' "$NBSD_SRC"/sys/conf/newvers.sh
     touch "$NBSD_SRC/.xai_branded"
 fi
 
