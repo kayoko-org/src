@@ -13,8 +13,9 @@ REAL_CC="cc"
 export CC="$REAL_CC"
 export LDFLAGS="-static" 
 export CFLAGS="-I$_INST/include"
-
+BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
 # 1. Build the "Tools" (Compiler/Linker/Make)
+
 # This only needs to happen once. It prevents all header skew.
 if [ ! -d "$NBSD_SRC/.git" ]; then
     echo "--> Cloning NetBSD source..."
@@ -28,39 +29,50 @@ sed -i 's/ostype=NetBSD/ostype=Xai/' "$NBSD_SRC/sys/conf/newvers.sh"
 # Update param.h for internal consistency
 sed -i 's/"NetBSD"/"Xai"/' "$NBSD_SRC/sys/sys/param.h"
 
-# Create XAI Kernel Config from GENERIC
-if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAI" ]; then
-    cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAI"
-    sed -i 's/ident[[:space:]]*GENERIC/ident XAI/' "$NBSD_SRC/sys/arch/$ARCH/conf/XAI"
+# --- 3. Incremental Build Sequence ---
+NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
+DESTDIR="$OBJ_DIR/destdir.$ARCH"
+
+# 1. Tools Check
+if [ ! -x "$NBMAKE" ]; then
+    echo "--> Tools missing. Building NetBSD Toolchain..."
+    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" tools)
 fi
 
-# --- 3. Isolated Build Sequence ---
-# We use 'env -i' to strip CFLAGS/CPATH that cause Ncurses conflicts
-BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
+# 2. Prepare System Root
+mkdir -p "$DESTDIR"
 
-echo "--> Building NetBSD Toolchain (Clean Room)..."
-(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U tools)
+# 1. This creates the /usr/include/arpa etc. tree
+(cd "$NBSD_SRC/etc" && \
+    $NBMAKE DESTDIR="$DESTDIR" distrib-dirs UNPRIVILEGED=no MKUNPRIVILEGED=no)
 
-echo "--> Building Xai Kernel..."
-(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U kernel=XAI)
 
-echo "--> Building Libc..."
-(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U -o library=libc)
+# 3. Populate Headers 
+# We explicitly tell nbmake that we are NOT in unprivileged mode
+echo "--> Installing headers..."
+(cd "$NBSD_SRC" && \
+    $NBMAKE includes DESTDIR="$DESTDIR" UNPRIVILEGED=no MKUNPRIVILEGED=no)
 
-# --- 4. Artifact Extraction ---
-echo "--> Extracting Xai Core Binaries"
-mkdir -p "$XAI_ROOT/lib"
+# 4. Libc Increment
+echo "--> Updating Libc..."
+(cd "$NBSD_SRC/lib/libc" && \
+    $NBMAKE obj && \
+    $NBMAKE depend && \
+    $NBMAKE -j"$NPROCS" DESTDIR="$DESTDIR" UNPRIVILEGED=no MKUNPRIVILEGED=no)
 
 # Copy Kernel
-cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/Xai"
-ln -sf Xai "$XAI_ROOT/netbsd"
+cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/unix"
 
-# Copy Libc (Find the shared object in the build tree)
-find "$OBJ_DIR/lib/libc" -name "libc.so*" -exec cp {} "$XAI_ROOT/lib/" \;
+# Copy Libc specifically from the OBJ tree
+# NetBSD puts built libs in the OBJDIR equivalent of the source path
+LIBC_OBJ_DIR="$OBJ_DIR/lib/libc"
+find "$LIBC_OBJ_DIR" -name "libc.so*" -exec cp -P {} "$XAI_ROOT/lib/" \;
+find "$LIBC_OBJ_DIR" -name "libc.a" -exec cp {} "$XAI_ROOT/lib/" \;
 
-# Copy Bootloader (Arch dependent, usually 'boot')
-find "$OBJ_DIR/sys/arch/$ARCH/stand" -name "boot" -exec cp {} "$XAI_ROOT/" \; 2>/dev/null || true
-
+# Optional: If you want to compile against your new XAI libc later, 
+# you'll need the headers in your XAI_ROOT
+echo "--> Installing System Headers to XAI_ROOT..."
+(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U installincludes DESTDIR="$XAI_ROOT")
 
 # 3. Build OKSH (Static shell)
 if [ ! -x "$OKSH_DIR/oksh" ]; then
@@ -91,14 +103,6 @@ install -m 755 "$SBASE_DIR/sbase-box" "$XAI_ROOT/bin/.utils"
 for tool in cat whoami touch tr true tar grep uname sed awk pwd mkdir cp mv rm; do
     (cd "$XAI_ROOT/bin" && ln -sf .utils "$tool")
 done
-
-# 7. Build the AIX Identity Shim & Uname
-# We link uname specifically to /lib/libc.so
-
-# 8. Finalize Library Layout
-NEW_LIBC=$(ls /usr/lib/libc.so.* | sort -V | tail -n 1)
-cp "$NEW_LIBC" "$XAI_ROOT/lib/libc.so"
-
 # 9. Environment Setup
 cat <<EOF > "$XAI_ROOT/etc/profile"
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
