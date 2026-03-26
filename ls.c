@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
-#include <sys/ioctl.h>
 
 static int flag_a = 0, flag_b = 0, flag_c = 0, flag_d = 0, flag_f = 0;
 static int flag_g = 0, flag_i = 0, flag_k = 0, flag_l = 0, flag_m = 0;
@@ -33,6 +32,18 @@ void report_error(const char *path) {
     fprintf(stderr, "ls: %s: %s\n", path, strerror(errno));
     global_exit_status = 1;
 }
+
+static int get_terminal_width(void) {
+    char *col_env = getenv("COLUMNS");
+    if (col_env) {
+        int width = atoi(col_env);
+        if (width > 0) return width;
+    }
+    /* POSIX: if COLUMNS is unset, the width is implementation-defined. 
+       80 is the standard historical fallback. */
+    return 80;
+}
+
 
 void mode_to_str(mode_t mode, char *buf) {
     strcpy(buf, "----------");
@@ -91,8 +102,15 @@ void print_name_escaped(const char *name) {
 void format_time(time_t t, char *buf, size_t len) {
     struct tm *tmp = localtime(&t);
     time_t now = time(NULL);
-    if (abs((long)(now - t)) > 15768000) strftime(buf, len, "%b %e  %Y", tmp);
-    else strftime(buf, len, "%b %e %H:%M", tmp);
+    
+    /* POSIX rule: If the date is more than 6 months in the past 
+       or any amount in the future, use the Year format. 
+       6 months is defined as 15,768,000 seconds. */
+    if (difftime(now, t) > 15768000 || difftime(now, t) < 0) {
+        strftime(buf, len, "%b %e  %Y", tmp);
+    } else {
+        strftime(buf, len, "%b %e %H:%M", tmp);
+    }
 }
 
 void print_long(file_info *f, int max_nlink, int max_size, int max_user, int max_group, int max_block) {
@@ -144,95 +162,75 @@ void list_dir(const char *path, int need_header, int first);
 void process_entries(file_info *entries, size_t count, int is_dir_list) {
     if (count == 0) return;
     if (!flag_f) qsort(entries, count, sizeof(file_info), compare_entries);
+    
     int max_nlink = 0, max_size = 0, max_user = 0, max_group = 0, max_block = 0, max_ino = 0;
     long total_blocks = 0;
+
     for (size_t i = 0; i < count; i++) {
-        char buf[32];
-        int n = snprintf(buf, 32, "%ju", (uintmax_t)entries[i].st.st_nlink);
+        char buf[64];
+        int n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_nlink);
         if (n > max_nlink) max_nlink = n;
-        n = snprintf(buf, 32, "%ju", (uintmax_t)entries[i].st.st_size);
+        n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_size);
         if (n > max_size) max_size = n;
+        
         uintmax_t b = (uintmax_t)entries[i].st.st_blocks;
         if (flag_k) b = (b + 1) / 2;
-        n = snprintf(buf, 32, "%ju", b);
+        n = snprintf(buf, sizeof(buf), "%ju", b);
         if (n > max_block) max_block = n;
-        n = snprintf(buf, 32, "%ju", (uintmax_t)entries[i].st.st_ino);
+        
+        n = snprintf(buf, sizeof(buf), "%ju", (uintmax_t)entries[i].st.st_ino);
         if (n > max_ino) max_ino = n;
+        
         total_blocks += b;
+        
         if (!flag_g) {
             struct passwd *pw = getpwuid(entries[i].st.st_uid);
-            int un = (flag_n || !pw) ? snprintf(buf, 32, "%u", entries[i].st.st_uid) : strlen(pw->pw_name);
+            int un = (flag_n || !pw) ? snprintf(buf, sizeof(buf), "%u", entries[i].st.st_uid) : (int)strlen(pw->pw_name);
             if (un > max_user) max_user = un;
         }
         if (!flag_o) {
             struct group *gr = getgrgid(entries[i].st.st_gid);
-            int gn = (flag_n || !gr) ? snprintf(buf, 32, "%u", entries[i].st.st_gid) : strlen(gr->gr_name);
+            int gn = (flag_n || !gr) ? snprintf(buf, sizeof(buf), "%u", entries[i].st.st_gid) : (int)strlen(gr->gr_name);
             if (gn > max_group) max_group = gn;
         }
     }
+
     if (flag_l && is_dir_list) printf("total %ld\n", total_blocks);
+
     if (flag_l) {
         for (size_t i = 0; i < count; i++) print_long(&entries[i], max_nlink, max_size, max_user, max_group, max_block);
     } else if (flag_m) {
         for (size_t i = 0; i < count; i++) {
             if (flag_i) printf("%ju ", (uintmax_t)entries[i].st.st_ino);
-            if (flag_s) {
-                uintmax_t b = (uintmax_t)entries[i].st.st_blocks;
-                if (flag_k) b = (b + 1) / 2;
-                printf("%ju ", b);
-            }
+            if (flag_s) printf("%ju ", flag_k ? ((uintmax_t)entries[i].st.st_blocks + 1) / 2 : (uintmax_t)entries[i].st.st_blocks);
             print_name_escaped(entries[i].name);
-            if (flag_F || flag_p) {
-                if (S_ISDIR(entries[i].st.st_mode)) putchar('/');
-                else if (flag_F) {
-                    if (S_ISLNK(entries[i].st.st_mode)) putchar('@');
-                    else if (S_ISFIFO(entries[i].st.st_mode)) putchar('|');
-                    else if (S_ISSOCK(entries[i].st.st_mode)) putchar('=');
-                    else if (entries[i].st.st_mode & S_IXUSR) putchar('*');
-                }
-            }
             if (i < count - 1) printf(", ");
         }
         putchar('\n');
-    } else if (flag_1 || !isatty(STDOUT_FILENO)) {
-        for (size_t i = 0; i < count; i++) {
-            if (flag_i) printf("%ju ", (uintmax_t)entries[i].st.st_ino);
-            if (flag_s) {
-                uintmax_t b = (uintmax_t)entries[i].st.st_blocks;
-                if (flag_k) b = (b + 1) / 2;
-                printf("%ju ", b);
-            }
-            print_name_escaped(entries[i].name);
-            if (flag_F || flag_p) {
-                if (S_ISDIR(entries[i].st.st_mode)) putchar('/');
-                else if (flag_F) {
-                    if (S_ISLNK(entries[i].st.st_mode)) putchar('@');
-                    else if (S_ISFIFO(entries[i].st.st_mode)) putchar('|');
-                    else if (S_ISSOCK(entries[i].st.st_mode)) putchar('=');
-                    else if (entries[i].st.st_mode & S_IXUSR) putchar('*');
-                }
-            }
-            putchar('\n');
-        }
     } else {
-        struct winsize ws;
-        int term_width = (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) ? ws.ws_col : 80;
+        /* Multi-column logic (Standard POSIX COLUMNS) */
+        char *col_env = getenv("COLUMNS");
+        int term_width = (col_env) ? atoi(col_env) : 80;
+        if (term_width <= 0) term_width = 80;
+
         int max_name = 0;
         for (size_t i = 0; i < count; i++) {
-            int len = strlen(entries[i].name);
+            int len = (int)strlen(entries[i].name);
             if (flag_i) len += max_ino + 1;
             if (flag_s) len += max_block + 1;
             if (flag_F || flag_p) len++;
             if (len > max_name) max_name = len;
         }
-        max_name += 2;
+        max_name += 2; 
+
         int cols = term_width / max_name;
         if (cols < 1) cols = 1;
         int rows = (count + cols - 1) / cols;
+
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 int idx = flag_x ? (r * cols + c) : (c * rows + r);
-                if (idx < count) {
+                if (idx < (int)count) {
                     int printed = 0;
                     if (flag_i) printed += printf("%*ju ", max_ino, (uintmax_t)entries[idx].st.st_ino);
                     if (flag_s) {
@@ -241,7 +239,8 @@ void process_entries(file_info *entries, size_t count, int is_dir_list) {
                         printed += printf("%*ju ", max_block, b);
                     }
                     print_name_escaped(entries[idx].name);
-                    printed += strlen(entries[idx].name);
+                    printed += (int)strlen(entries[idx].name);
+                    
                     if (flag_F || flag_p) {
                         if (S_ISDIR(entries[idx].st.st_mode)) { putchar('/'); printed++; }
                         else if (flag_F) {
@@ -251,13 +250,15 @@ void process_entries(file_info *entries, size_t count, int is_dir_list) {
                             else if (entries[idx].st.st_mode & S_IXUSR) { putchar('*'); printed++; }
                         }
                     }
-                    if (c < cols - 1) printf("%*s", max_name - printed, "");
+                    if (c < cols - 1 && (idx + (flag_x ? 1 : rows) < (int)count)) 
+                        printf("%*s", max_name - printed, "");
                 }
             }
             putchar('\n');
         }
     }
 }
+
 
 void list_dir(const char *path, int need_header, int first) {
     DIR *d = opendir(path);
