@@ -1,28 +1,33 @@
 #!/bin/ksh
-# XAI System Resource Controller - Execution Phase
+# XAI System Resource Controller - NetBSD Native Phase
 # Strict check: Only allow PID 1 (init) to run this
 if [ "$$" -ne 1 ]; then
     print "error: srcmstr must be run as PID 1." >&2
     exit 1
 fi
 
-# 1. Real Setup (Using sbase mount)
-/bin/mount -t proc proc /proc
-/bin/mount -t sysfs sys /sys
-/bin/mount -t devtmpfs dev /dev 2>/dev/null
+# 1. NetBSD Kernel Filesystem Setup
+# NetBSD uses kernfs instead of sysfs, and procfs has different options
+/sbin/mount_kernfs /kern /kern
+/sbin/mount_procfs -o linux proc /proc
+/sbin/mount_ptyfs ptyfs /dev/pts
+
+# Optional: If you want a memory-backed /tmp (common in BSD)
+/sbin/mount_tmpfs tmpfs /tmp
 
 # 2. Identity Check (Using your compiled uname and libkstat)
 export LD_PRELOAD=/lib/libkstat.so
 SYS_NAME=$(/bin/uname -s)
 SYS_VER=$(/bin/uname -v)
 
-# 3. Output logic based on your os-release and lppcfg
+# 3. Output logic based on your os-release
 if [ -f /etc/os-release ]; then
     . /etc/os-release
-    print "Starting $NAME $VERSION..."
+    print "Starting $NAME $VERSION (NetBSD Kernel $SYS_VER)..."
 fi
 
-# 4. Starting the Sync Daemon (Real sbase sync)
+# 4. Starting the Sync Daemon
+# On BSD, update(8) or a background sync is standard
 /bin/sync &
 print "0513-059 The sync Subsystem has been started. Subsystem PID is $!."
 
@@ -31,6 +36,7 @@ if [ -f /etc/lppcfg ]; then
     while read -r line; do
         case "$line" in
             "#"*) continue ;;
+            "") continue ;;
             *) print "Successfully updated the Kernel ${line%%:*} Table." ;;
         esac
     done < /etc/lppcfg
@@ -38,15 +44,19 @@ fi
 
 print "System runtime mode is now OPERATIONAL MODE."
 
-# 6. Multi-user Mounts (Real sbase mount -a)
-print "Performing all automatic mounts"
-/bin/mount -a 2>/dev/null
+# 6. Multi-user Mounts (NetBSD mount -a)
+print "Performing all automatic mounts from /etc/fstab"
+/sbin/mount -a 2>/dev/null
 
 # 7. Final Handover
 print "Multi-user initialization completed"
 print "Checking for srcmstr active...complete"
 print "$NAME Version $VERSION_ID"
-/sbin/login || /bin/ksh || /bin/oksh || /bin/sh || /sbin/login && /sbin/login || echo '! ! Missing login device ! !' && exit 1
+
+# Ensure we have a tty before calling login
+/usr/bin/getty std console 
+# If getty fails, fall back to shells
+/sbin/login || /bin/ksh || /bin/sh || echo '! ! Missing login device ! !'
 
 while true; do
     wait
