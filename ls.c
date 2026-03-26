@@ -102,7 +102,7 @@ void print_name_escaped(const char *name) {
 void format_time(time_t t, char *buf, size_t len) {
     struct tm *tmp = localtime(&t);
     time_t now = time(NULL);
-    
+
     /* POSIX rule: If the date is more than 6 months in the past 
        or any amount in the future, use the Year format. 
        6 months is defined as 15,768,000 seconds. */
@@ -277,7 +277,6 @@ void list_dir(const char *path, int need_header, int first) {
     file_info *entries = malloc(cap * sizeof(file_info));
     struct dirent *de;
     while ((de = readdir(d)) != NULL) {
-    /* POSIX logic for -a and -A */
     if (!flag_a) {
         if (flag_A) {
             // -A: Hide ONLY "." and ".."
@@ -295,7 +294,6 @@ void list_dir(const char *path, int need_header, int first) {
         file_info *tmp = realloc(entries, cap * sizeof(file_info));
         if (!tmp) {
             perror("ls: out of memory");
-            // Clean up already allocated entries before exiting if desired
             exit(1); 
         }
         entries = tmp;
@@ -327,8 +325,9 @@ void list_dir(const char *path, int need_header, int first) {
             }
         }
     }
-    for (size_t i = 0; i < count; i++) {
-        free(entries[i].name); free(entries[i].fullpath);
+	for (size_t i = 0; i < count; i++) {
+        free(entries[i].name); 
+        free(entries[i].fullpath);
         if (entries[i].link_target) free(entries[i].link_target);
     }
     free(entries);
@@ -365,11 +364,6 @@ int main(int argc, char *argv[]) {
             default: fprintf(stderr, "usage: ls [-Aabcdfgiklmnopqrstux1RFC] [file ...]\n"); return 1;
 	        }
 	    }
-	/* * POSIX default behavior:
-	 * 1. If stdout is a terminal, default is multi-column (-C).
-	 * 2. If stdout is NOT a terminal, default is one-per-line (-1).
-	 * 3. Any explicit flag (-l, -1, -m, -x, -C) overrides these defaults.
-	 */
 	if (!flag_l && !flag_1 && !flag_m && !flag_x && !flag_C) {
 	    if (isatty(STDOUT_FILENO)) {
 	        flag_C = 1;
@@ -386,31 +380,58 @@ int main(int argc, char *argv[]) {
         } else list_dir(".", 0, 1);
     } else {
         file_info *files = malloc(num_args * sizeof(file_info));
-        size_t f_count = 0;
         char **dirs = malloc(num_args * sizeof(char *));
+        if (!files || !dirs) { perror("malloc"); return 1; }
+
+        size_t f_count = 0;
         size_t d_count = 0;
+
         for (int i = optind; i < argc; i++) {
             struct stat st;
-            if (lstat(argv[i], &st) != 0) { report_error(argv[i]); continue; }
+            // Use stat for args unless -l or -d is set (standard ls behavior)
+            int (*stat_func)(const char*, struct stat*) = (flag_l || flag_d) ? lstat : stat;
+            
+            if (stat_func(argv[i], &st) != 0) { 
+                report_error(argv[i]); 
+                continue; 
+            }
+
             if (flag_d || !S_ISDIR(st.st_mode)) {
-                files[f_count].name = argv[i];
-                files[f_count].fullpath = argv[i];
+                files[f_count].name = strdup(argv[i]);
+                files[f_count].fullpath = strdup(argv[i]);
                 files[f_count].st = st;
                 files[f_count].link_target = NULL;
+
                 if (flag_l && S_ISLNK(st.st_mode)) {
-                    char t[4096]; ssize_t rl = readlink(argv[i], t, 4095);
-                    if (rl != -1) { t[rl] = '\0'; files[f_count].link_target = strdup(t); }
+                    char t[4096]; 
+                    ssize_t rl = readlink(argv[i], t, 4095);
+                    if (rl != -1) { 
+                        t[rl] = '\0'; 
+                        files[f_count].link_target = strdup(t); 
+                    }
                 }
                 f_count++;
-            } else dirs[d_count++] = argv[i];
+            } else {
+                dirs[d_count++] = argv[i];
+            }
         }
-        if (f_count > 0) process_entries(files, f_count, 0);
+
+        if (f_count > 0) {
+            process_entries(files, f_count, 0);
+        }
+
         for (size_t i = 0; i < d_count; i++) {
             list_dir(dirs[i], (num_args > 1), (f_count == 0 && i == 0));
         }
-        for (size_t i = 0; i < f_count; i++) if (files[i].link_target) free(files[i].link_target);
-        free(files); free(dirs);
+
+        for (size_t i = 0; i < f_count; i++) {
+            free(files[i].name);
+            free(files[i].fullpath);
+            if (files[i].link_target) free(files[i].link_target);
+        }
+        free(files); 
+        free(dirs);
     }
-    return global_exit_status;
+   return global_exit_status;
 }
 
