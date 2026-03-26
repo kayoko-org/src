@@ -1,3 +1,4 @@
+#define _FILE_OFFSET_BITS 64
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
