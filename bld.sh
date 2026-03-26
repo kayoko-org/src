@@ -14,6 +14,53 @@ export CC="$REAL_CC"
 export LDFLAGS="-static" 
 export CFLAGS="-I$_INST/include"
 
+# 1. Build the "Tools" (Compiler/Linker/Make)
+# This only needs to happen once. It prevents all header skew.
+if [ ! -d "$NBSD_SRC/.git" ]; then
+    echo "--> Cloning NetBSD source..."
+    git clone --depth 1 https://github.com/NetBSD/src.git "$NBSD_SRC"
+fi
+
+# --- 2. Xai Branding ---
+echo "--> Applying Xai Branding to Source"
+# Change the OS name reported by uname -s / uname -a
+sed -i 's/ostype=NetBSD/ostype=Xai/' "$NBSD_SRC/sys/conf/newvers.sh"
+# Update param.h for internal consistency
+sed -i 's/"NetBSD"/"Xai"/' "$NBSD_SRC/sys/sys/param.h"
+
+# Create XAI Kernel Config from GENERIC
+if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAI" ]; then
+    cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAI"
+    sed -i 's/ident[[:space:]]*GENERIC/ident XAI/' "$NBSD_SRC/sys/arch/$ARCH/conf/XAI"
+fi
+
+# --- 3. Isolated Build Sequence ---
+# We use 'env -i' to strip CFLAGS/CPATH that cause Ncurses conflicts
+BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
+
+echo "--> Building NetBSD Toolchain (Clean Room)..."
+(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U tools)
+
+echo "--> Building Xai Kernel..."
+(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U kernel=XAI)
+
+echo "--> Building Libc..."
+(cd "$NBSD_SRC" && $BUILD_ENV ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -U -o library=libc)
+
+# --- 4. Artifact Extraction ---
+echo "--> Extracting Xai Core Binaries"
+mkdir -p "$XAI_ROOT/lib"
+
+# Copy Kernel
+cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/Xai"
+ln -sf Xai "$XAI_ROOT/netbsd"
+
+# Copy Libc (Find the shared object in the build tree)
+find "$OBJ_DIR/lib/libc" -name "libc.so*" -exec cp {} "$XAI_ROOT/lib/" \;
+
+# Copy Bootloader (Arch dependent, usually 'boot')
+find "$OBJ_DIR/sys/arch/$ARCH/stand" -name "boot" -exec cp {} "$XAI_ROOT/" \; 2>/dev/null || true
+
 
 # 3. Build OKSH (Static shell)
 if [ ! -x "$OKSH_DIR/oksh" ]; then
@@ -49,8 +96,8 @@ done
 # We link uname specifically to /lib/libc.so
 
 # 8. Finalize Library Layout
-LIBC="/usr/lib/libc.so.102.0"
-cp "$LIBC" "$XAI_ROOT/lib/libc.so"
+NEW_LIBC=$(ls /usr/lib/libc.so.* | sort -V | tail -n 1)
+cp "$NEW_LIBC" "$XAI_ROOT/lib/libc.so"
 
 # 9. Environment Setup
 cat <<EOF > "$XAI_ROOT/etc/profile"
