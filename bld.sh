@@ -7,7 +7,7 @@ set -e
 # 1. Directory Setup (Stripped of /lib64 Linux-isms)
 mkdir -p "$XAI_ROOT/bin" "$XAI_ROOT/sbin" "$XAI_ROOT/lib" "$XAI_ROOT/etc" "$XAI_ROOT/usr"
 ln -sf ../lib "$XAI_ROOT/usr/lib"
-cp srcmstr "$XAI_ROOT/sbin/init"
+cp src/cmd/adm/srcmstr "$XAI_ROOT/sbin/init"
 
 REAL_CC="cc"
 export CC="$REAL_CC"
@@ -26,11 +26,11 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
-"$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" login.c
-"$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/ls" ls.c
+"$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/core/adm/login.c
+"$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/ls" src/cmd/core/ls.c
 
 mkdir -p "$XAI_ROOT/usr/bin"
-"$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" hostname.c
+"$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" src/cmd/core/hostname.c
 
 # 5. Build SBASE (The Toolchest)
 if [ ! -d "$SBASE_DIR" ]; then
@@ -68,7 +68,7 @@ bos.mp64:7.3.0.0
 devices.common.IBM.usb.rte:7.3.0.0
 EOF
 
-mkdir -p "$XAI_ROOT"/usr/bin && cp oslevel "$XAI_ROOT"/usr/bin
+mkdir -p "$XAI_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$XAI_ROOT"/usr/bin
 
 
 cat <<'EOF' > "$XAI_ROOT"/etc/os-release
