@@ -60,6 +60,20 @@ echo "--> Building C Startup (CSU) objects..."
     $NBMAKE -j"$NPROCS" $COMMON_FLAGS && \
     $NBMAKE install $COMMON_FLAGS)
 
+echo "--> Installing Compiler Support Libraries (libgcc)..."
+# libgcc is often part of the 'external' or 'lib' depending on NetBSD version
+# But the most reliable incremental way is hitting the 'lib' sub-dirs
+for dir in lib/libgcc_s lib/libcompiler_rt; do
+    if [ -d "$NBSD_SRC/$dir" ]; then
+        echo "--> Building $dir..."
+        (cd "$NBSD_SRC/$dir" && \
+            $NBMAKE obj && \
+            $NBMAKE depend && \
+            $NBMAKE -j"$NPROCS" $COMMON_FLAGS && \
+            $NBMAKE install $COMMON_FLAGS)
+    fi
+done
+
 # 4. Libc Increment
 echo "--> Updating Libc..."
 (cd "$NBSD_SRC/lib/libc" && \

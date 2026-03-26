@@ -3,6 +3,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <locale.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -79,7 +80,7 @@ int compare_entries(const void *a, const void *b) {
         else if (flag_u) { ta = fa->st.st_atime; tb = fb->st.st_atime; }
         if (ta != tb) return (tb > ta) - (tb < ta);
     }
-    int res = strcmp(fa->name, fb->name);
+    int res = strcoll(fa->name, fb->name);
     return flag_r ? -res : res;
 }
 
@@ -335,6 +336,7 @@ void list_dir(const char *path, int need_header, int first) {
 }
 
 int main(int argc, char *argv[]) {
+    setlocale(LC_ALL, "");
     int opt;
     while ((opt = getopt(argc, argv, "Aabcdfgiklmnopqrstux1RFC")) != -1) {
         switch (opt) {
