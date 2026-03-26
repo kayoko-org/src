@@ -6,3 +6,6 @@ root/usr/bin/
 inst/
 root/sbin/
 root/usr/sbin/
+root/usr/lib/
+root/usr/share/
+root/

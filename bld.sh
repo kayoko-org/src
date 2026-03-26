@@ -94,3 +94,5 @@ if [ ! -d "$HOME/ncurses-$NCURSES_VER" ]; then
      make -j"$NPROCS" && make install)
 fi
 
+
+cp -Rp "$_INST"/* "$XAI_ROOT/usr/"
