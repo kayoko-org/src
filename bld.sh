@@ -3,15 +3,7 @@
 set -e
 
 # Configuration
-XAI_ROOT="$(pwd)/root"
-SBASE_DIR="$HOME/sbase"
-OKSH_DIR="$HOME/oksh"
-_VER="1.2.5"
-_INST="$(pwd)/inst"
-# 0. POSIX check for parallelism
-# Replaces GNU 'nproc'
-NPROCS=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
-
+. ./.env
 # 1. Directory Setup (Stripped of /lib64 Linux-isms)
 mkdir -p "$XAI_ROOT/bin" "$XAI_ROOT/sbin" "$XAI_ROOT/lib" "$XAI_ROOT/etc" "$XAI_ROOT/usr"
 ln -sf ../lib "$XAI_ROOT/usr/lib"
@@ -100,17 +92,4 @@ if [ ! -d "$HOME/ncurses-$NCURSES_VER" ]; then
                  --enable-widec --enable-static && \
      make -j"$NPROCS" && make install)
 fi
-
-
-if [ ! -x "$XAI_ROOT/usr/bin/vi" ]; then
-    [ -d "$HOME/neatvi" ] || git clone https://github.com/aligrudi/neatvi.git "$HOME/neatvi"
-    
-    (cd "$HOME/neatvi" && \
-     "$CC" -static -O2 -o vi vi.c ex.c lbuf.c mot.c sbuf.c ren.c dir.c syn.c reg.c led.c uc.c term.c conf.c \
-        rset.c rstr.c tag.c cmd.c regex.c && \
-     install -D -m 755 vi "$XAI_ROOT/usr/bin/vi" && \
-     ln -sf vi "$XAI_ROOT/usr/bin/ex" && \
-     ln -sf vi "$XAI_ROOT/usr/bin/view")
-fi
-
 
