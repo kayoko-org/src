@@ -53,6 +53,13 @@ echo "--> Installing headers..."
 (cd "$NBSD_SRC" && \
     $NBMAKE includes DESTDIR="$DESTDIR" UNPRIVILEGED=no MKUNPRIVILEGED=no)
 
+echo "--> Building C Startup (CSU) objects..."
+(cd "$NBSD_SRC/lib/csu" && \
+    $NBMAKE obj && \
+    $NBMAKE depend && \
+    $NBMAKE -j"$NPROCS" $COMMON_FLAGS && \
+    $NBMAKE install $COMMON_FLAGS)
+
 # 4. Libc Increment
 echo "--> Updating Libc..."
 (cd "$NBSD_SRC/lib/libc" && \
