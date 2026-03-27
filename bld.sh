@@ -71,7 +71,7 @@ fi
 # We use a marker file to avoid unnecessary sed runs
 if [ ! -f "$NBSD_SRC/.xao_branded" ]; then
     echo "--> Applying Xao Branding..."
-    sed -i 's/ost="NetBSD"/ost="Xao"/' "$NBSD_SRC"/sys/conf/newvers.sh
+    sed -i 's/ost="NetBSD"/ost="openXao"/' "$NBSD_SRC"/sys/conf/newvers.sh
     touch "$NBSD_SRC/.xao_branded"
 fi
 
