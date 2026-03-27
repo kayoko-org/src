@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 
 int main(int argc, char *argv[]) {
     int append = 0;
@@ -19,7 +20,6 @@ int main(int argc, char *argv[]) {
         switch (opt) {
             case 'a': append = 1; break;
             case 'i': /* Ignore SIGINT is optional for minimalists but POSIX */
-                #include <signal.h>
                 signal(SIGINT, SIG_IGN);
                 break;
             default:
