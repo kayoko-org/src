@@ -1,5 +1,6 @@
 #include "pax.h"
 #include "pax.utils.h"
+#include <utime.h>
 
 void archive_file(int arch_fd, const char *path) {
     struct stat st;
@@ -71,7 +72,7 @@ void do_read_list(int fd, int extract) {
                     if (r <= 0) break;
                     write(out, buf, (rem < r ? rem : r));
                     rem -= r;
-                }
+}
                 close(out);
             }
         } else {
@@ -81,16 +82,89 @@ void do_read_list(int fd, int extract) {
     }
 }
 
-void do_copy(const char *dest, int argc, char **argv) {
-    for (int i = 0; i < argc; i++) {
-        char cmd[PATH_MAX * 2];
-        snprintf(cmd, sizeof(cmd), "cp -R %s %s", argv[i], dest);
-        system(cmd); // POSIX pax -rw is logically a recursive copy
+void make_intermediate_dir(const char *path) {
+    char buf[4096];
+    char *p = NULL;
+    snprintf(buf, sizeof(buf), "%s", path);
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '/') buf[len - 1] = 0;
+    
+    for (p = buf + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            mkdir(buf, 0777);
+            *p = '/';
+        }
+    }
+}
+
+void copy_node(const char *src, const char *dest_folder) {
+    struct stat st;
+    if (lstat(src, &st) == -1) return;
+
+    char target[4096];
+    snprintf(target, sizeof(target), "%s/%s", dest_folder, src);
+
+    make_intermediate_dir(target);
+
+    if (S_ISDIR(st.st_mode)) {
+        if (mkdir(target, (st.st_mode & 07777) | 0700) == -1) {
+            struct stat check;
+            if (stat(target, &check) == -1 || !S_ISDIR(check.st_mode)) return;
+        }
+
+        DIR *d = opendir(src);
+        struct dirent *de;
+        if (d) {
+            while ((de = readdir(d))) {
+                if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;
+                char sub[4096];
+                snprintf(sub, sizeof(sub), "%s/%s", src, de->d_name);
+                copy_node(sub, dest_folder);
+            }
+            closedir(d);
+        }
+    } else if (S_ISREG(st.st_mode)) {
+        int sfd = open(src, O_RDONLY);
+        // Create with exact source mode. Note: S_ISUID/S_ISGID may be cleared by kernel
+        int dfd = open(target, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 07777);
+        if (sfd >= 0) {
+            if (dfd >= 0) {
+                char buf[32256];
+                ssize_t n;
+                while ((n = read(sfd, buf, sizeof(buf))) > 0) write(dfd, buf, n);
+                close(dfd);
+            }
+            close(sfd);
+        }
+    }
+
+    // Without root:
+    // 1. We skip chown() because it will fail/EPERM for other users.
+    // 2. We re-apply chmod to ensure bits like S_ISVTX (sticky) or SGID are set
+    //    if the open()/mkdir() call stripped them due to umask.
+    chmod(target, st.st_mode & 07777);
+
+    // 3. Preserve Timestamps
+    struct utimbuf times = { .actime = st.st_atime, .modtime = st.st_mtime };
+    utime(target, &times);
+}
+
+void do_copy(const char *dest, int argc, char **argv, int optind) {
+    struct stat st;
+    if (stat(dest, &st) == -1 || !S_ISDIR(st.st_mode) || access(dest, W_OK) == -1) {
+        return;
+    }
+
+    for (int i = optind; i < argc - 1; i++) {
+        copy_node(argv[i], dest);
     }
 }
 
 int main(int argc, char *argv[]) {
-    int c, r = 0, w = 0; char *file = NULL;
+    int c, r = 0, w = 0; 
+    char *file = NULL;
+
     while ((c = getopt(argc, argv, "rwvf:")) != -1) {
         switch (c) {
             case 'r': r = 1; break;
@@ -99,14 +173,27 @@ int main(int argc, char *argv[]) {
             case 'f': file = optarg; break;
         }
     }
-    int fd = (w && !r) ? STDOUT_FILENO : STDIN_FILENO;
-    if (file) fd = (w && !r) ? open(file, O_WRONLY|O_CREAT|O_TRUNC, 0644) : open(file, O_RDONLY);
 
-    if (r && w) do_copy(argv[argc-1], argc - optind - 1, &argv[optind]);
-    else if (w) {
-        for (int i = optind; i < argc; i++) archive_file(fd, argv[i]);
-        char trl[BLKSIZE * 2] = {0}; write(fd, trl, sizeof(trl));
-    } else do_read_list(fd, r);
+    if (r && w) {
+        // Copy Mode: destination is the last argument
+        if (optind < argc - 1) {
+            do_copy(argv[argc - 1], argc, argv, optind);
+        }
+    } else if (w) {
+        // Write Mode
+        int fd = file ? open(file, O_WRONLY|O_CREAT|O_TRUNC, 0644) : STDOUT_FILENO;
+        for (int i = optind; i < argc; i++) {
+            archive_file(fd, argv[i]);
+        }
+        char trl[BLKSIZE * 2] = {0};
+        write(fd, trl, sizeof(trl));
+        if (file) close(fd);
+    } else {
+        // List or Read Mode
+        int fd = file ? open(file, O_RDONLY) : STDIN_FILENO;
+        do_read_list(fd, r);
+        if (file) close(fd);
+    }
 
     return 0;
 }
