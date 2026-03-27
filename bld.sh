@@ -50,8 +50,8 @@ export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
 
 # This only needs to happen once. It prevents all header skew.
 if [ ! -d "$NBSD_SRC/.git" ]; then
-    echo "--> Cloning NetBSD source..."
-    git clone --depth 1 https://github.com/NetBSD/src.git "$NBSD_SRC"
+    echo "--> Cloning openXao gate..."
+    git clone --depth 1 https://github.com/openXao/gate.git "$NBSD_SRC"
 fi
 # --- 2. Xai Branding ---
 # --- 1. Build the "Tools" ---
