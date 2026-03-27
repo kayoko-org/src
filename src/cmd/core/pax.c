@@ -215,8 +215,7 @@ int main(int argc, char *argv[]) {
             case 'v': vf = 1; break;
             case 'f': file = optarg; break;
             case 'x':
-                if (strcmp(optarg, "cpio") == 0) format = FMT_CPIO;
-                else format = FMT_USTAR;
+                format = (strcmp(optarg, "cpio") == 0) ? FMT_CPIO : FMT_USTAR;
                 break;
             default: exit(1);
         }
@@ -224,8 +223,20 @@ int main(int argc, char *argv[]) {
 
     int fd;
     if (wf) {
-        fd = file ? open(file, O_WRONLY|O_CREAT|O_TRUNC, 0644) : 1;
-        for (int i = optind; i < argc; i++) archive_file(fd, argv[i]);
+        /* ARCHIVE WRITE MODE */
+        if (!file && isatty(STDOUT_FILENO)) {
+            fprintf(stderr, "pax: archive cannot be written to a terminal\n");
+            exit(1);
+        }
+        
+        fd = file ? open(file, O_WRONLY|O_CREAT|O_TRUNC, 0644) : STDOUT_FILENO;
+        if (fd < 0) { perror(file); exit(1); }
+
+        for (int i = optind; i < argc; i++) {
+            archive_file(fd, argv[i]);
+        }
+
+        /* Write Trailer */
         if (format == FMT_USTAR) {
             char trailer[BLKSIZE * 2] = {0};
             write(fd, trailer, sizeof(trailer));
@@ -235,10 +246,19 @@ int main(int argc, char *argv[]) {
             write(fd, "TRAILER!!!\0", 11);
         }
     } else {
-        fd = file ? open(file, O_RDONLY) : 0;
+        /* ARCHIVE READ/LIST MODE */
+        if (!file && isatty(STDIN_FILENO)) {
+            fprintf(stderr, "pax: archive cannot be read from a terminal\n");
+            exit(1);
+        }
+
+        fd = file ? open(file, O_RDONLY) : STDIN_FILENO;
+        if (fd < 0) { perror(file); exit(1); }
+
         extract_archive(fd);
     }
 
     if (file && fd >= 0) close(fd);
     return 0;
 }
+
