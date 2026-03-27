@@ -41,6 +41,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Only root may use this binary.\n");
         exit(1);
     }
+	
+    if (getenv("XAO_SESS") != NULL) {
+    fprintf(stderr, "Nesting prohibited.\n");
+    exit(1);
+    }
 
     if (argc > 1 && strcmp(argv[1], "-a") == 0) {
         unauth_mode = 1;
