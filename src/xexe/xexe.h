@@ -3,58 +3,43 @@
 
 #include <stdint.h>
 
-/* * XEXE Magic Number: "XEXE" 
- * Identifies the file as a Xao Executable.
- */
-#define XEXE_MAGIC 0x45584558  /* 'XEXE' in Little Endian */
+#define XEXE_MAGIC    0x4558      /* 'XE' in Little Endian */
+#define XEXE_SCN_SIZE 40          /* Strict COFF regularity */
 
-/*
- * XEXE File Header
- * This is the root of the binary. It must be at offset 0.
- */
-struct xexe_file_header {
-    uint32_t f_magic;         /* Magic number (XEXE) */
-    uint32_t f_hware;         /* HWARE Pattern: Hardware/Arch identifier (e.g., 'X86_64', 'ARM64') */
-    uint32_t f_timedat;       /* Time and date stamp (Internal audit trail) */
-    uint32_t f_symptr;        /* File pointer to symbol table (if not stripped) */
-    uint32_t f_nsyms;         /* Number of entries in symbol table */
-    uint16_t f_opthdr;        /* Size of the optional header (XEXE_OPT_HEADER) */
-    uint16_t f_flags;         /* F_EXEC, F_CERTIFIED, F_RELFLG, etc. */
-};
+/* XEXE File Header (20 Bytes) */
+struct xexe_fhdr {
+    uint16_t f_magic;         /* Magic number (0x4558) */
+    uint16_t f_nscns;         /* Number of sections */
+    uint32_t f_timdat;        /* Time/Date stamp */
+    uint32_t f_symptr;        /* File offset to symbol table */
+    uint32_t f_nsyms;         /* Number of symbol entries */
+    uint16_t f_opthdr;        /* Size of optional header */
+    uint16_t f_flags;         /* Flags (e.g., 0x0001 = Executable) */
+} __attribute__((packed));
 
-/*
- * XEXE Optional Header (Standard for Executables)
- * This contains the entry point and memory layout hints.
- */
-struct xexe_opt_header {
-    uint16_t  opt_magic;      /* Optional header magic */
-    uint16_t  vstamp;         /* Version stamp (e.g., 0x0001 for Beta) */
-    uint32_t  tsize;          /* Text size in bytes */
-    uint32_t  dsize;          /* Initialized data size */
-    uint32_t  bsize;          /* Uninitialized data size (BSS) */
-    uint64_t  entry;          /* Entry point virtual address */
-    uint64_t  text_start;     /* Base address of text segment */
-    uint64_t  data_start;     /* Base address of data segment */
-};
+/* XEXE Optional Header (28 Bytes) - Required for Executables */
+struct xexe_ohdr {
+    uint16_t o_magic;         /* 0x010B (Normal) or 0x0107 (Impure) */
+    uint16_t o_vstamp;        /* Version stamp */
+    uint32_t o_tsize;         /* Text size */
+    uint32_t o_dsize;         /* Data size */
+    uint32_t o_bsize;         /* BSS size */
+    uint64_t o_entry;         /* Entry point (64-bit) */
+    uint64_t o_text_start;    /* Base of text (64-bit) */
+} __attribute__((packed));
 
-/* * XEXE Section Header 
- * Defines the various "bricks" of the binary (text, data, compliance_metadata).
- */
-struct xexe_section_header {
-    char     s_name[8];       /* Section name (e.g., ".text", ".cert") */
-    uint64_t s_paddr;         /* Physical address */
+/* XEXE Section Header (40 Bytes) */
+struct xexe_shdr {
+    char     s_name[8];       /* Section name (e.g., ".text\0\0\0") */
     uint64_t s_vaddr;         /* Virtual address */
-    uint32_t s_size;          /* Section size */
-    uint32_t s_scnptr;        /* File pointer to raw data */
-    uint32_t s_relptr;        /* File pointer to relocation entries */
-    uint16_t s_nreloc;        /* Number of relocation entries */
-    uint32_t s_flags;         /* Section flags (Read, Write, Exec, Secure) */
-};
+    uint64_t s_paddr;         /* Physical address */
+    uint32_t s_size;          /* Section size in bytes */
+    uint32_t s_scnptr;        /* File offset to raw data */
+    uint32_t s_relptr;        /* File offset to relocations */
+    uint32_t s_lnnoptr;       /* File offset to line numbers */
+    uint16_t s_nreloc;        /* Number of relocs */
+    uint16_t s_nlnno;         /* Number of line numbers */
+    uint32_t s_flags;         /* Flags (0x20 = Text, 0x40 = Data, etc.) */
+} __attribute__((packed));
 
-/* XEXE Header Flags */
-#define XEXE_F_EXEC         0x0001  /* File is executable */
-#define XEXE_F_CERTIFIED    0x0002  /* Xao-Specific: Binary has passed compliance check */
-#define XEXE_F_STRIPPED     0x0004  /* Local symbols removed */
-#define XEXE_F_RELFLG       0x0008  /* Relocation info stripped */
-
-#endif /* _XEXE_H_ */
+#endif

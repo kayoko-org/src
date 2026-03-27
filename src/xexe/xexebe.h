@@ -51,5 +51,47 @@ struct xexebe_section_header {
 #define XEXEBE_F_EXEC         0x0001
 #define XEXEBE_F_CERTIFIED    0x0002
 #define XEXEBE_F_STRIPPED     0x0004
+#ifndef _XEXEBE_H_
+#define _XEXEBE_H_
 
-#endif /* _XEXEBE_H_ */
+#include <stdint.h>
+
+#define XEXEBE_MAGIC  0x4550      /* 'EX' in Big Endian representation */
+
+/* XEXEBE File Header (20 Bytes) */
+struct xexebe_fhdr {
+    uint16_t f_magic;         /* Magic number (0x4550) */
+    uint16_t f_nscns;         
+    uint32_t f_timdat;        
+    uint32_t f_symptr;        
+    uint32_t f_nsyms;         
+    uint16_t f_opthdr;        
+    uint16_t f_flags;         
+} __attribute__((packed));
+
+/* XEXEBE Optional Header (28 Bytes) */
+struct xexebe_ohdr {
+    uint16_t o_magic;         
+    uint16_t o_vstamp;        
+    uint32_t o_tsize;         
+    uint32_t o_dsize;         
+    uint32_t o_bsize;         
+    uint64_t o_entry;         
+    uint64_t o_text_start;    
+} __attribute__((packed));
+
+/* XEXEBE Section Header (40 Bytes) */
+struct xexebe_shdr {
+    char     s_name[8];       
+    uint64_t s_vaddr;         
+    uint64_t s_paddr;         
+    uint32_t s_size;          
+    uint32_t s_scnptr;        
+    uint32_t s_relptr;        
+    uint32_t s_lnnoptr;       
+    uint16_t s_nreloc;        
+    uint16_t s_nlnno;         
+    uint32_t s_flags;         
+} __attribute__((packed));
+
+#endif
