@@ -1,0 +1,71 @@
+.Dd March 27, 2026
+.Dt CHMOD 1
+.Os Xao
+.Sh NAME
+.Nm chmod
+.Nd change file mode bits
+.Sh SYNOPSIS
+.Nm
+.Op Fl R
+.Ar mode
+.Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility modifies the file mode bits of the
+.Ar file
+operands.
+.Pp
+The
+.Ar mode
+can be an octal number or a symbolic mode string.
+A symbolic mode string is a comma-separated list of operations in the format:
+.Pp
+.Bk -words
+.Op Ar who
+.Ar op
+.Op Ar perm
+.Ek
+.Pp
+The
+.Ar who
+symbols
+.Sy u , g , o ,
+and
+.Sy a
+specify user, group, other, and all permissions respectively.
+The
+.Ar op
+symbols
+.Sy + , - ,
+and
+.Sy =
+specify adding, removing, or absolute setting of permissions.
+The
+.Ar perm
+symbols
+.Sy r , w ,
+and
+.Sy x
+specify read, write, and execute permissions.
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl R
+Recursive. Change the mode of the
+.Ar file
+hierarchies rooted in the specified operands.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Grant execute permission to everyone:
+.Pp
+.Dl $ chmod a+x binary
+.Pp
+Set exact permissions using octal:
+.Pp
+.Dl $ chmod 644 index.html
+.Sh SEE ALSO
+.Xr chmod 2 ,
+.Xr chown 8 ,
+.Xr ls 1

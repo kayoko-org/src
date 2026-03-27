@@ -1,0 +1,32 @@
+.Dd March 27, 2026
+.Dt ID 1
+.Os Xao
+.Sh NAME
+.Nm id
+.Nd return user identity
+.Sh SYNOPSIS
+.Nm
+.Op Ar user
+.Sh DESCRIPTION
+The
+.Nm
+utility writes a line to the standard output containing the user and 
+group IDs and the corresponding names of the invoking process.
+.Pp
+If the effective and real IDs are different, both are displayed.
+Any supplementary group memberships are also displayed.
+.Pp
+If a
+.Ar user
+operand is provided, the identity of that user is displayed instead 
+of the invoking process.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Display current user and group information:
+.Pp
+.Dl $ id
+.Sh SEE ALSO
+.Xr getgroups 2 ,
+.Xr getpwuid 3 ,
+.Xr whoami 1

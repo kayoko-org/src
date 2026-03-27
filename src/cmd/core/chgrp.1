@@ -1,0 +1,46 @@
+.Dd March 27, 2026
+.Dt CHGRP 1
+.Os Xao
+.Sh NAME
+.Nm chgrp
+.Nd change group ownership
+.Sh SYNOPSIS
+.Nm
+.Op Fl R
+.Ar group
+.Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility sets the group ID of the files specified by the 
+.Ar file
+operands to the group ID specified by the
+.Ar group
+operand.
+.Pp
+The
+.Ar group
+operand can be either a group name from the group database or a numeric 
+group ID.
+.Pp
+The following option is supported:
+.Bl -tag -width indent
+.It Fl R
+Recursive. Change the group ID of the 
+.Ar file
+hierarchies rooted in the specified operands.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Change the group of a file to "wheel":
+.Pp
+.Dl $ chgrp wheel /etc/hosts
+.Pp
+Recursively change the group of a directory using a GID:
+.Pp
+.Dl $ chgrp -R 1000 /home/user/docs
+.Sh SEE ALSO
+.Xr chown 2 ,
+.Xr getgrnam 3 ,
+.Xr group 5

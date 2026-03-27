@@ -1,0 +1,51 @@
+.Dd March 27, 2026
+.Dt KILL 1
+.Os Xao
+.Sh NAME
+.Nm kill
+.Nd terminate or signal processes
+.Sh SYNOPSIS
+.Nm
+.Op Fl s Ar signal_name
+.Ar pid ...
+.Nm
+.Fl l
+.Nm
+.Fl Ar signal_number
+.Ar pid ...
+.Sh DESCRIPTION
+The
+.Nm
+utility sends a signal to the processes specified by the
+.Ar pid
+operands.
+By default, a
+.Dv SIGTERM
+signal is sent.
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl l
+List the signal names supported by the implementation.
+.It Fl s Ar signal_name
+Specify the signal to be sent using a symbolic name (e.g., KILL).
+.It Fl Ar signal_number
+A non-negative integer specifying the signal to be sent.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Send the default TERM signal to process 1234:
+.Pp
+.Dl $ kill 1234
+.Pp
+Forcefully terminate a process:
+.Pp
+.Dl $ kill -9 1234
+.Pp
+List all available signals:
+.Pp
+.Dl $ kill -l
+.Sh SEE ALSO
+.Xr kill 2 ,
+.Xr signal 7

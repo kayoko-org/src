@@ -1,0 +1,36 @@
+.Dd March 27, 2026
+.Dt DIRNAME 1
+.Os Xao
+.Sh NAME
+.Nm dirname
+.Nd return directory portion of a pathname
+.Sh SYNOPSIS
+.Nm
+.Ar string
+.Sh DESCRIPTION
+The
+.Nm
+utility takes a path string and writes it to standard output with the 
+last non-slash component and any trailing slashes removed.
+.Pp
+If the string contains no slashes,
+.Nm
+writes a dot
+.Pq Ql .
+to the standard output.
+If the string is empty, a dot is also written.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Extract the directory from a path:
+.Pp
+.Dl $ dirname /usr/bin/cat
+.Dl /usr/bin
+.Pp
+Handle trailing slashes:
+.Pp
+.Dl $ dirname /usr/local/
+.Dl /usr
+.Sh SEE ALSO
+.Xr basename 1 ,
+.Xr dirname 3
