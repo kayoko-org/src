@@ -158,7 +158,21 @@ for src_file in src/cmd/core/*.c; do
     # We use -s to strip symbols and -O2 for UNIX-standard performance
     "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAO_ROOT/bin/$bin_name" "$src_file" $LDFLAGS
 done
-"$REAL_CC" -O2 -static -o "$XAO_ROOT/sbin/login" src/cmd/adm/login.c
+echo "--> Building Xai Administrative Utilities..."
+for src_file in src/cmd/adm/*.c; do
+    # 1. Strip the directory path: 'ls.c'
+    base_name=$(basename "$src_file")
+    
+    # 2. Strip the extension: 'ls'
+    bin_name="${base_name%.c}"
+    
+    echo "$bin_name..."
+    
+    # 3. Compile as a static binary
+    # We use -s to strip symbols and -O2 for UNIX-standard performance
+    "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAO_ROOT/sbin/$bin_name" "$src_file" $LDFLAGS
+done
+
 
 # 9. Environment Setup
 cat <<EOF > "$XAO_ROOT/etc/profile"

@@ -1,0 +1,48 @@
+.Dd March 27, 2026
+.Dt CHROOT 8
+.Os Xao
+.Sh NAME
+.Nm chroot
+.Nd run command or shell with special root directory
+.Sh SYNOPSIS
+.Nm
+.Ar newroot
+.Op Ar command Op Ar arg ...
+.Sh DESCRIPTION
+The
+.Nm
+utility changes the root directory to
+.Ar newroot
+and then executes
+.Ar command
+with optional
+.Ar arg
+arguments.
+If no
+.Ar command
+is specified, the value of the
+.Ev SHELL
+environment variable is used, or
+.Pa /bin/sh
+if
+.Ev SHELL
+is not set.
+.Pp
+Only the super-user may change the root directory.
+.Sh EXIT STATUS
+If the command is executed, the exit status is that of the command.
+Otherwise, the exit status is:
+.Bl -tag -width 4n
+.It 125
+The
+.Nm
+utility itself failed.
+.It 126
+The command was found but could not be executed.
+.It 127
+The command could not be found.
+.El
+.Sh SEE ALSO
+.Xr chdir 2 ,
+.Xr chroot 2 ,
+.Xr execvp 3
