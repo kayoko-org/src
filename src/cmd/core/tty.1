@@ -1,0 +1,43 @@
+.Dd March 27, 2026
+.Dt TTY 1
+.Os Xao
+.Sh NAME
+.Nm tty
+.Nd return user's terminal name
+.Sh SYNOPSIS
+.Nm
+.Op Fl s
+.Sh DESCRIPTION
+The
+.Nm
+utility writes the name of the terminal that is open on standard input to
+standard output.
+The name written is an absolute pathname.
+.Pp
+If the standard input is not a terminal, the message
+.Dq not a tty
+is written to the standard output.
+.Pp
+The following option is supported:
+.Bl -tag -width indent
+.It Fl s
+Silent mode.
+Do not write the terminal name; only the exit status is affected.
+.El
+.Sh EXIT STATUS
+.Ex -std
+The
+.Nm
+utility exits with 0 if standard input is a terminal, 1 if standard input 
+is not a terminal, and >1 if an error occurred.
+.Sh EXAMPLES
+Display the name of the current terminal:
+.Pp
+.Dl $ tty
+.Pp
+Check if standard input is a terminal in a script:
+.Pp
+.Dl $ if tty -s; then echo "Interactive"; fi
+.Sh SEE ALSO
+.Xr isatty 3 ,
+.Xr ttyname 3
