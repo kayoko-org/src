@@ -1,0 +1,44 @@
+.Dd March 27, 2026
+.Dt MKTEMP 1
+.Os Xao
+.Sh NAME
+.Nm mktemp
+.Nd make temporary filename (unique)
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Op Ar template
+.Sh DESCRIPTION
+The
+.Nm
+utility takes the given file name
+.Ar template
+and overwrites a portion of it to create a unique filename.
+The template may be any file name with at least six trailing
+.Ql X
+characters.
+.Pp
+If no
+.Ar template
+is specified, a default of
+.Pa /tmp/tmp.XXXXXX
+is used.
+.Pp
+The following option is supported:
+.Bl -tag -width indent
+.It Fl d
+Make a directory instead of a file.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Create a temporary file using the default template:
+.Pp
+.Dl $ mktemp
+.Pp
+Create a temporary directory with a specific prefix:
+.Pp
+.Dl $ mktemp -d /tmp/mydata.XXXXXX
+.Sh SEE ALSO
+.Xr mkdtemp 3 ,
+.Xr mkstemp 3
