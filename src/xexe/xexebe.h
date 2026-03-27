@@ -37,7 +37,7 @@ char     s_name[8];
     uint32_t s_flags;
 } __attribute__((packed));
 
-struct xexe_reloc {
+struct xexebe_reloc {
     uint64_t r_vaddr;     /* Address of reference */
     uint32_t r_symndx;    /* Index into symbol table */
     uint16_t r_type;      /* Relocation type (Arch-specific) */
