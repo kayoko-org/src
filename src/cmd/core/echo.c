@@ -3,43 +3,39 @@
 #include <string.h>
 
 int main(int argc, char *argv[]) {
-    int i;
-    for (i = 1; i < argc; i++) {
-        char *p = argv[i];
-        while (*p) {
-            if (*p == '\\') {
-                p++;
-                switch (*p) {
-                    case 'a':  putchar('\a'); break;
-                    case 'b':  putchar('\b'); break;
-                    case 'c':  return 0;      /* \c: Terminate output immediately */
-                    case 'f':  putchar('\f'); break;
-                    case 'n':  putchar('\n'); break;
-                    case 'r':  putchar('\r'); break;
-                    case 't':  putchar('\t'); break;
-                    case 'v':  putchar('\v'); break;
-                    case '\\': putchar('\\'); break;
-                    case '0': {               /* \0num: Octal constant */
-                        int j, n = 0;
-                        for (j = 0; j < 3 && p[1] >= '0' && p[1] <= '7'; j++) {
-                            n = n * 8 + (*++p - '0');
-                        }
-                        putchar(n);
-                        break;
-                    }
-                    default:
-                        putchar('\\');
-                        if (*p) putchar(*p);
-                        else p--; /* Back up if backslash was at end of string */
-                        break;
-                }
-            } else {
-                putchar(*p);
-            }
-            if (*p) p++;
+    int opt, i, fd;
+    int exit_status = 0;
+
+    while ((opt = getopt(argc, argv, "u")) != -1) {
+        switch (opt) {
+            case 'u': 
+                /* Data is already unbuffered via read/write */
+                break;
+            default:
+                fprintf(stderr, "usage: cat [-u] [file ...]\n");
+                return 1;
         }
-        if (i < argc - 1) putchar(' ');
     }
-    putchar('\n');
-    return 0;
+
+    if (optind == argc) {
+        concat(STDIN_FILENO, "stdin");
+    } else {
+        for (i = optind; i < argc; i++) {
+            if (argv[i][0] == '-' && argv[i][1] == '\0') {
+                fd = STDIN_FILENO;
+            } else {
+                fd = open(argv[i], O_RDONLY);
+                if (fd < 0) {
+                    perror(argv[i]);
+                    exit_status = 1; // Mark failure but keep going
+                    continue;
+                }
+            }
+            concat(fd, argv[i]);
+            if (fd != STDIN_FILENO) close(fd);
+        }
+    }
+
+    return exit_status;
 }
+
