@@ -172,7 +172,11 @@ for src_file in src/cmd/adm/*.c; do
     base_name=$(basename "$src_file" .c)
 
     # 2. Skip special cases that need custom linking (we handle these later)
-    if [ "$base_name" = "sysmgr" ]; then
+    if [ "$base_name" = "login" ]; then
+        continue
+    fi
+
+   if [ "$base_name" = "sysmgr" ]; then
         continue
     fi
 
@@ -185,6 +189,13 @@ for src_file in src/cmd/adm/*.c; do
 done
 
 # 4. Handle Special Case: sysmgr (needs -lcurses -lterminfo)
+echo "  [CC] login (special)"
+"$REAL_CC" $CFLAGS -O2 -static -s \
+    -o "$XAO_ROOT/sbin/login" \
+    src/cmd/adm/login.c \
+    -lcrypt $LDFLAGS
+
+
 echo "  [CC] sysmgr (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
     -o "$XAO_ROOT/sbin/sysmgr" \

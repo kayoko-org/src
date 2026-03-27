@@ -6,113 +6,120 @@
 #include <time.h>
 #include <termios.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <pwd.h>
+
+/* * Manually prototype crypt if not in unistd.h to stop the pointer truncation 
+ * that causes the memory fault.
+ */
+extern char *crypt(const char *, const char *);
+extern char *getpass(const char *);
 
 void get_aix_time(char *buf) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
-    strftime(buf, 64, "%a %b %d %H:%M:%S %Z %Y", t);
-}
-
-int file_exists(const char *path) {
-    struct stat buffer;
-    return (stat(path, &buffer) == 0);
-}
-
-void print_splash(const char *version, const char *pty) {
-    char time_buf[64];
-    get_aix_time(time_buf);
-
-    printf("Last login: %s on /dev/%s\n", time_buf, pty);
-}
-
-
-void print_motd(void) {
-    const char *motd_path = "/etc/motd";
-
-    // 1. Check if the file exists and is readable
-    // F_OK checks existence, R_OK checks read permission
-    if (access(motd_path, F_OK | R_OK) == 0) {
-
-        FILE *fp = fopen(motd_path, "r");
-        if (fp) {
-            int c;
-            // 2. Read character-by-character
-            // This is "unlimited" because no buffer is used to store strings
-            while ((c = fgetc(fp)) != EOF) {
-                putchar(c);
-            }
-            fclose(fp);
-            printf("\n"); // Ensure a clean newline after the MOTD
-        }
+    if (t) {
+        strftime(buf, 64, "%a %b %d %H:%M:%S %Z %Y", t);
     } else {
-        // Optional: Handle case where MOTD doesn't exist
-        // Usually, login programs just skip silently
+        strcpy(buf, "Unknown Time");
     }
 }
 
-int main() {
-    char user[32], pass[32], c_user[32], c_pass[32];
-    struct termios t_old, t_new;
+void print_splash(const char *user) {
+    char time_buf[64];
+    get_aix_time(time_buf);
+    (void)user; /* Reserve for future 'Last login for %s' logic */
+    printf("Last login: %s on vty0\n", time_buf);
+    printf("Welcome to openXao. (C) 2026 The openXao Project.\n\n");
+}
+
+int main(int argc, char *argv[]) {
+    char user[32], *pass, *hashed;
     struct passwd *pw;
+    int unauth_mode = 0;
+
+    if (getuid() != 0) {
+        fprintf(stderr, "Only root may use this binary.\n");
+        exit(1);
+    }
+
+    if (argc > 1 && strcmp(argv[1], "-a") == 0) {
+        unauth_mode = 1;
+    }
 
     while (1) {
+        struct termios t;
+	char prompt[64]; /* Buffer for the dynamic password prompt */
+        tcgetattr(STDIN_FILENO, &t);
+        t.c_lflag |= ECHO; 
+        tcsetattr(STDIN_FILENO, TCSANOW, &t);
+
         printf("Console login: ");
-        fflush(stdout);
-        if (scanf("%31s", user) == EOF) break;
+	if (scanf("%31s", user) <= 0) {
+            /* If they hit Ctrl-D or there's an error, exit loop */
+            if (feof(stdin)) break;
+            continue; 
+        }
+	fflush(stdout);
+        pw = getpwnam(user);
 
-        printf("%s's Password: ", user);
-        fflush(stdout);
-        tcgetattr(STDIN_FILENO, &t_old);
-        t_new = t_old;
-        t_new.c_lflag &= ~ECHO;
-        tcsetattr(STDIN_FILENO, TCSANOW, &t_new);
-        scanf("%31s", pass);
-        tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
-        printf("\n");
+        if (unauth_mode) {
+            if (pw) goto authenticated;
+	} else {
+            /* Format the prompt: "root's Password: " */
+            snprintf(prompt, sizeof(prompt), "%s's Password: ", user);
 
-        // Auth Logic against /etc/shadow
-        int auth = 0;
-        FILE *fp = fopen("/etc/shadow", "r");
-        if (fp) {
-            while (fscanf(fp, "%[^:]:%s\n", c_user, c_pass) != EOF) {
-                if (strcmp(user, c_user) == 0 && strcmp(pass, c_pass) == 0) {
-                    auth = 1;
-                    break;
+            /* getpass uses the custom prompt and hides the typing */
+            pass = getpass(prompt);
+            
+            /*  Print newline because getpass won't move the cursor */
+            printf("\n");
+            /* * Safety: check pw and pw_passwd existence before passing to crypt
+             * to prevent segfaults on accounts with no password field.
+             */
+            if (pw && pw->pw_passwd && pass) {
+                hashed = crypt(pass, pw->pw_passwd);
+                if (hashed && strcmp(hashed, pw->pw_passwd) == 0) {
+                    goto authenticated;
                 }
             }
-            fclose(fp);
         }
 
-        if (auth && (pw = getpwnam(user))) {
-            print_splash(pw->pw_name, "vty0");
+        sleep(2);
+        printf("Login incorrect\n\n");
+        continue;
 
-            // 1. Determine Home Directory with Fallback
-            char *home = (pw->pw_dir && file_exists(pw->pw_dir)) ? pw->pw_dir : "/";
-            print_motd();
-	    chdir(home);
+authenticated:
+        print_splash(user);
 
-            // 2. Determine Shell with Fallback
-            char *shell = (pw->pw_shell && file_exists(pw->pw_shell)) ? pw->pw_shell : "/bin/ksh";
-            if (!file_exists(shell)) shell = "/bin/sh"; // Last resort
-
-            // 3. Set Environment
-            setenv("HOME", home, 1);
-            setenv("SHELL", shell, 1);
-            setenv("USER", pw->pw_name, 1);
-            setenv("LOGNAME", pw->pw_name, 1);
-            setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 0);
-
-            // 4. Exec as Login Shell (the '-' prefix)
-            execl(shell, "-ksh", (char *)NULL);
-
-            perror("exec failed");
+        /* Final safety check: ensure pw is valid before dropping privs */
+        if (!pw) {
+            fprintf(stderr, "Internal error: User vanished.\n");
             exit(1);
-        } else {
-            sleep(2);
-            printf("Login incorrect\n\n");
         }
+
+        if (setgid(pw->pw_gid) != 0 || setuid(pw->pw_uid) != 0) {
+            perror("! ! Failed to drop privileges ! !");
+            exit(1);
+        }
+
+        /* Standardize environment */
+        if (pw->pw_dir) {
+            if (chdir(pw->pw_dir) != 0) {
+                (void)chdir("/");
+            }
+            setenv("HOME", pw->pw_dir, 1);
+        }
+        
+        setenv("USER", pw->pw_name, 1);
+        setenv("LOGNAME", pw->pw_name, 1);
+        setenv("SHELL", "/bin/ksh", 1);
+        setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1);
+
+        /* Standard Unix practice: argv[0] starts with '-' for login shells */
+        execl("/bin/ksh", "-ksh", (char *)NULL);
+        
+        perror("exec failed");
+        exit(1);
     }
     return 0;
 }
