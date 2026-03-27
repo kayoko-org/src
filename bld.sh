@@ -62,10 +62,10 @@ fi
 
 # --- 2. Branding (Only if changed) ---
 # We use a marker file to avoid unnecessary sed runs
-if [ ! -f "$NBSD_SRC/.xai_branded" ]; then
-    echo "--> Applying Xai Branding..."
-    sed -i 's/ost="NetBSD"/ost="XAI"/' "$NBSD_SRC"/sys/conf/newvers.sh
-    touch "$NBSD_SRC/.xai_branded"
+if [ ! -f "$NBSD_SRC/.xao_branded" ]; then
+    echo "--> Applying Xao Branding..."
+    sed -i 's/ost="NetBSD"/ost="Xao"/' "$NBSD_SRC"/sys/conf/newvers.sh
+    touch "$NBSD_SRC/.xao_branded"
 fi
 
 # Helper function for incremental component builds
@@ -108,19 +108,19 @@ echo "--> Syncing Headers to XAI_ROOT..."
 
 # --- 3.5 Build the Kernel ---
 # Note: We use the custom "XAI" config name here
-if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
+if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
     echo "--> Building Custom Xai Kernel..."
     # If you haven't created a 'XAI' config file yet, we'll use GENERIC as a base
-    if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAI" ]; then
-        cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAI"
+    if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAO" ]; then
+        cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAO"
     fi
     
     (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=XAI)
 fi
 
 # Kernel (Incremental if already built in obj)
-if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" ]; then
-    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAI/netbsd" "$XAI_ROOT/unix"
+if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
+    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" "$XAI_ROOT/unix"
 fi
 
 
@@ -145,7 +145,7 @@ for src_file in src/cmd/core/*.c; do
     # 2. Strip the extension: 'ls'
     bin_name="${base_name%.c}"
     
-    echo "    Compiling $bin_name..."
+    echo "$bin_name..."
     
     # 3. Compile as a static binary
     # We use -s to strip symbols and -O2 for UNIX-standard performance
