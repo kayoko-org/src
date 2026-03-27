@@ -1,0 +1,35 @@
+.Dd March 27, 2026
+.Dt HOSTNAME 1
+.Os Xao
+.Sh NAME
+.Nm hostname
+.Nd set or print name of current host system
+.Sh SYNOPSIS
+.Nm
+.Op Ar name
+.Sh DESCRIPTION
+The
+.Nm
+utility prints the name of the current host.
+.Pp
+If an argument is restricted to the superuser, 
+.Nm
+sets the name of the host to
+.Ar name .
+.Pp
+The host name is limited to
+.Dv HOST_NAME_MAX
+characters.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Display the current host name:
+.Pp
+.Dl $ hostname
+.Pp
+Set the host name to "Xenix":
+.Pp
+.Dl # hostname Xenix
+.Sh SEE ALSO
+.Xr gethostname 3 ,
+.Xr sethostname 3

@@ -1,0 +1,46 @@
+.Dd March 27, 2026
+.Dt CAT 1
+.Os Xao
+.Sh NAME
+.Nm cat
+.Nd concatenate and print files
+.Sh SYNOPSIS
+.Nm
+.Op Fl u
+.Op Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility reads files sequentially, writing them to standard output.
+The
+.Ar file
+operands are processed in the order specified.
+If
+.Ar file
+is a single dash
+.Pq Ql -
+or if no
+.Ar file
+operands are specified,
+.Nm
+reads from the standard input.
+.Pp
+The following option is supported:
+.Bl -tag -width indent
+.It Fl u
+Write bytes from the input file to the standard output without delay
+as each is successfully read.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Print the contents of a file:
+.Pp
+.Dl $ cat note.txt
+.Pp
+Concatenate two files and redirect to a third:
+.Pp
+.Dl $ cat file1 file2 > file3
+.Sh SEE ALSO
+.Xr read 2 ,
+.Xr write 2

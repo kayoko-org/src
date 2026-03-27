@@ -1,0 +1,54 @@
+.Dd March 27, 2026
+.Dt ECHO 1
+.Os Xao
+.Sh NAME
+.Nm echo
+.Nd write arguments to standard output
+.Sh SYNOPSIS
+.Nm
+.Op Ar string ...
+.Sh DESCRIPTION
+The
+.Nm
+utility writes its arguments, separated by blank characters and followed by a
+newline character, to the standard output.
+.Pp
+The following escape sequences are recognized within the
+.Ar string
+arguments:
+.Bl -tag -width indent
+.It Ic \ea
+Write an alert character.
+.It Ic \eb
+Write a backspace character.
+.It Ic \ec
+Terminate output immediately. Any following characters in the argument,
+any further arguments, and the trailing newline are ignored.
+.It Ic \ef
+Write a form-feed character.
+.It Ic \en
+Write a newline character.
+.It Ic \er
+Write a carriage-return character.
+.It Ic \et
+Write a tab character.
+.It Ic \ev
+Write a vertical-tab character.
+.It Ic \e\e
+Write a backslash character.
+.It Ic \e0num
+Write an 8-bit value whose ASCII value is the 1-, 2-, or 3-digit octal number
+.Ar num .
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Write a line of text:
+.Pp
+.Dl $ echo "Hello, world"
+.Pp
+Write text without a trailing newline:
+.Pp
+.Dl $ echo "Hello, world\ec"
+.Sh SEE ALSO
+.Xr printf 1

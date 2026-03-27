@@ -1,0 +1,28 @@
+.Dd March 27, 2026
+.Dt SLEEP 1
+.Os Xao
+.Sh NAME
+.Nm sleep
+.Nd suspend execution for an interval
+.Sh SYNOPSIS
+.Nm
+.Ar seconds
+.Sh DESCRIPTION
+The
+.Nm
+utility suspends execution for at least the integral number of seconds
+specified by the
+.Ar seconds
+operand.
+.Pp
+If the
+.Nm
+utility receives a signal, it takes the standard action.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Wait for five seconds before executing a command:
+.Pp
+.Dl $ sleep 5 && echo "Time is up"
+.Sh SEE ALSO
+.Xr sleep 3

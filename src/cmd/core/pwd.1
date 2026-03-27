@@ -1,0 +1,57 @@
+.Dd March 27, 2026
+.Dt PWD 1
+.Os Xao
+.Sh NAME
+.Nm pwd
+.Nd return working directory name
+.Sh SYNOPSIS
+.Nm
+.Op Fl L | Fl P
+.Sh DESCRIPTION
+The
+.Nm
+utility writes an absolute pathname of the current working directory to
+standard output.
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl L
+If the environment variable
+.Ev PWD
+contains an absolute pathname of the current directory that does not
+contain the components
+.Pa .
+or
+.Pa .. ,
+write that pathname. Otherwise, the
+.Fl L
+option behaves like the
+.Fl P
+option.
+.It Fl P
+The pathname written does not contain any components that refer to
+files of type symbolic link.
+.El
+.Pp
+If both
+.Fl L
+and
+.Fl P
+are specified, the last one applied shall determine the behavior of the
+utility. If neither option is specified, the
+.Nm
+utility behaves as if
+.Fl L
+had been specified.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Display the logical working directory:
+.Pp
+.Dl $ pwd
+.Pp
+Display the physical working directory, resolving all symbolic links:
+.Pp
+.Dl $ pwd -P
+.Sh SEE ALSO
+.Xr getcwd 3

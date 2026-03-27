@@ -1,0 +1,52 @@
+.Dd March 27, 2026
+.Dt UNAME 1
+.Os Xao
+.Sh NAME
+.Nm uname
+.Nd return system name
+.Sh SYNOPSIS
+.Nm
+.Op Fl asnrvm
+.Sh DESCRIPTION
+The
+.Nm
+utility writes symbols to standard output identifying the operating system
+implementation.
+.Pp
+If no options are specified,
+.Nm
+writes the operating system name, as if the
+.Fl s
+option had been specified.
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl a
+Write all information available, as though all of the options
+.Fl m , n , r , s ,
+and
+.Fl v
+were specified.
+.It Fl m
+Write the name of the hardware type on which the system is running.
+.It Fl n
+Write the name of this node within a communications network.
+.It Fl r
+Write the current release level of the operating system implementation.
+.It Fl s
+Write the name of the operating system implementation.
+.It Fl v
+Write the operating system version level.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Display the operating system name:
+.Pp
+.Dl $ uname
+.Pp
+Display all available system information:
+.Pp
+.Dl $ uname -a
+.Sh SEE ALSO
+.Xr uname 2
