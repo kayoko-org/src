@@ -1,264 +1,112 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <utime.h>
-#include <errno.h>
-#include <dirent.h>
-#include <pwd.h>
-#include <grp.h>
-#include "ls.h"
+#include "pax.h"
+#include "pax.utils.h"
 
-#define BLKSIZE 512
-
-typedef enum { FMT_USTAR, FMT_CPIO } archive_fmt;
-
-/* POSIX ustar Header */
-struct ustar_hdr {
-    char name[100];     char mode[8];       char uid[8];        char gid[8];
-    char size[12];      char mtime[12];     char chksum[8];     char type;
-    char link[100];     char magic[6];      char version[2];    char uname[32];
-    char gname[32];     char devmaj[8];     char devmin[8];     char prefix[155];
-    char pad[12];
-};
-
-/* POSIX cpio (odc) Header */
-struct cpio_hdr {
-    char magic[6];      char dev[6];        char ino[6];        char mode[6];
-    char uid[6];        char gid[6];        char nlink[6];      char rdev[6];
-    char mtime[11];     char namesize[6];   char filesize[11];
-};
-
-static int rf = 0, wf = 0, vf = 0;
-static archive_fmt format = FMT_USTAR;
-
-/* Calculate ustar checksum */
-void set_chksum(struct ustar_hdr *h) {
-    memset(h->chksum, ' ', 8);
-    unsigned int sum = 0;
-    unsigned char *p = (unsigned char *)h;
-    for (int i = 0; i < BLKSIZE; i++) sum += p[i];
-    sprintf(h->chksum, "%06o", sum & 0777777);
-}
-
-void print_verbose(const char *name, mode_t mode, uid_t uid, gid_t gid, long size, time_t mtime) {
-    char mstr[11];
-    char tstr[20];
-    struct passwd *pw = getpwuid(uid);
-    struct group *gr = getgrgid(gid);
-
-    mode_to_str(mode, mstr);
-    format_time(mtime, tstr, sizeof(tstr));
-
-    printf("%s  1 %-8s %-8s %8ld %s %s\n",
-           mstr,
-           pw ? pw->pw_name : "root",
-           gr ? gr->gr_name : "users",
-           size, tstr, name);
-}
-
-/* Write a file to the archive */
 void archive_file(int arch_fd, const char *path) {
     struct stat st;
-    if (lstat(path, &st) == -1) {
-        fprintf(stderr, "pax: %s: %s\n", path, strerror(errno));
-        return;
-    }
+    if (lstat(path, &st) == -1) return;
+    struct ustar_hdr h;
+    memset(&h, 0, sizeof(h));
+    if (pax_split_path(path, &h) != 0) return;
 
-    if (vf && wf) printf("%s\n", path);
-
-    if (format == FMT_USTAR) {
-        struct ustar_hdr h;
-        memset(&h, 0, sizeof(h));
-        strncpy(h.name, path, 100);
-        sprintf(h.mode, "%07o", st.st_mode & 07777);
-        sprintf(h.uid, "%07o", st.st_uid);
-        sprintf(h.gid, "%07o", st.st_gid);
-        sprintf(h.size, "%011lo", S_ISREG(st.st_mode) ? (long)st.st_size : 0L);
-        sprintf(h.mtime, "%011lo", (long)st.st_mtime);
-        h.type = S_ISDIR(st.st_mode) ? '5' : '0';
-        memcpy(h.magic, "ustar", 6);
-        memcpy(h.version, "00", 2);
-        set_chksum(&h);
-        write(arch_fd, &h, BLKSIZE);
-    } else {
-        struct cpio_hdr h;
-        memset(&h, 0, sizeof(h));
-        memcpy(h.magic, "070707", 6);
-        sprintf(h.mode, "%06o", st.st_mode & 0777777);
-        sprintf(h.uid, "%06o", st.st_uid);
-        sprintf(h.gid, "%06o", st.st_gid);
-        sprintf(h.mtime, "%011lo", (long)st.st_mtime);
-        sprintf(h.namesize, "%06o", (int)strlen(path) + 1);
-        sprintf(h.filesize, "%011lo", S_ISREG(st.st_mode) ? (long)st.st_size : 0L);
-        write(arch_fd, &h, sizeof(h));
-        write(arch_fd, path, strlen(path) + 1);
-    }
+    pax_format_octal(h.mode, 8, st.st_mode & 07777);
+    pax_format_octal(h.uid, 8, st.st_uid);
+    pax_format_octal(h.gid, 8, st.st_gid);
+    pax_format_octal(h.size, 12, S_ISREG(st.st_mode) ? st.st_size : 0);
+    pax_format_octal(h.mtime, 12, st.st_mtime);
+    h.type = S_ISDIR(st.st_mode) ? '5' : '0';
+    memcpy(h.magic, "ustar", 6);
+    memcpy(h.version, "00", 2);
+    
+    struct passwd *pw = getpwuid(st.st_uid);
+    struct group *gr = getgrgid(st.st_gid);
+    if (pw) strncpy(h.uname, pw->pw_name, 32);
+    if (gr) strncpy(h.gname, gr->gr_name, 32);
+    
+    pax_set_chksum(&h);
+    write(arch_fd, &h, BLKSIZE);
 
     if (S_ISREG(st.st_mode)) {
         int fd = open(path, O_RDONLY);
         char buf[BLKSIZE];
         ssize_t n;
         while ((n = read(fd, buf, BLKSIZE)) > 0) {
-            if (format == FMT_USTAR) {
-                if (n < BLKSIZE) memset(buf + n, 0, BLKSIZE - n);
-                write(arch_fd, buf, BLKSIZE);
-            } else {
-                write(arch_fd, buf, n);
-            }
+            if (n < BLKSIZE) memset(buf + n, 0, BLKSIZE - n);
+            write(arch_fd, buf, BLKSIZE);
         }
         close(fd);
     } else if (S_ISDIR(st.st_mode)) {
         DIR *d = opendir(path);
         struct dirent *de;
-        if (!d) return;
         while ((de = readdir(d))) {
-            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-            char subpath[1024];
-            snprintf(subpath, sizeof(subpath), "%s/%s", path, de->d_name);
-            archive_file(arch_fd, subpath);
+            if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;
+            char sub[PATH_MAX];
+            snprintf(sub, sizeof(sub), "%s/%s", path, de->d_name);
+            archive_file(arch_fd, sub);
         }
         closedir(d);
     }
 }
 
-/* Extract or List from archive */
-void extract_archive(int arch_fd) {
+void do_read_list(int fd, int extract) {
+    struct ustar_hdr h;
     char buf[BLKSIZE];
-    while (read(arch_fd, buf, (format == FMT_USTAR ? BLKSIZE : sizeof(struct cpio_hdr))) > 0) {
-        char name[256];
-        long size = 0, mtime = 0;
-        int mode = 0, uid = 0, gid = 0;
+    while (read(fd, &h, BLKSIZE) == BLKSIZE && h.name[0] != '\0') {
+        char full[256] = {0};
+        if (h.prefix[0]) snprintf(full, 256, "%s/%s", h.prefix, h.name);
+        else strncpy(full, h.name, 100);
 
-        if (format == FMT_USTAR) {
-            struct ustar_hdr *h = (struct ustar_hdr *)buf;
-            if (h->name[0] == '\0') break;
-            strncpy(name, h->name, 100);
-            size = strtol(h->size, NULL, 8);
-            mode = strtol(h->mode, NULL, 8);
-            uid = strtol(h->uid, NULL, 8);
-            gid = strtol(h->gid, NULL, 8);
-            mtime = strtol(h->mtime, NULL, 8);
+        if (vflag) pax_print_verbose(&h, full);
+        else if (!extract) printf("%s\n", full);
 
-            if (vf) {
-                print_verbose(name, mode, uid, gid, size, (time_t)mtime);
-            } else if (!rf) {
-                printf("%s\n", name);
-            }
-
-            if (rf) {
-                if (h->type == '5') {
-                    mkdir(name, mode);
-                } else {
-                    int out_fd = open(name, O_WRONLY|O_CREAT|O_TRUNC, mode);
-                    long rem = size;
-                    while (rem > 0) {
-                        read(arch_fd, buf, BLKSIZE);
-                        write(out_fd, buf, (rem < BLKSIZE ? rem : BLKSIZE));
-                        rem -= BLKSIZE;
-                    }
-                    close(out_fd);
-                }
+        long size = strtol(h.size, NULL, 8);
+        if (extract) {
+            mode_t mode = strtol(h.mode, NULL, 8);
+            if (h.type == '5') {
+                mkdir(full, mode);
             } else {
-                long skip = ((size + BLKSIZE - 1) / BLKSIZE) * BLKSIZE;
-                lseek(arch_fd, skip, SEEK_CUR);
+                int out = open(full, O_WRONLY|O_CREAT|O_TRUNC, mode);
+                long rem = size;
+                while (rem > 0) {
+                    ssize_t r = read(fd, buf, BLKSIZE);
+                    if (r <= 0) break;
+                    write(out, buf, (rem < r ? rem : r));
+                    rem -= r;
+                }
+                close(out);
             }
         } else {
-            struct cpio_hdr *h = (struct cpio_hdr *)buf;
-            if (strncmp(h->magic, "070707", 6) != 0) break;
-            int nsize = strtol(h->namesize, NULL, 8);
-            size = strtol(h->filesize, NULL, 8);
-            mode = strtol(h->mode, NULL, 8);
-            uid = strtol(h->uid, NULL, 8);
-            gid = strtol(h->gid, NULL, 8);
-            mtime = strtol(h->mtime, NULL, 8);
-
-            read(arch_fd, name, nsize);
-            if (strcmp(name, "TRAILER!!!") == 0) break;
-
-            if (vf) {
-                print_verbose(name, mode, uid, gid, size, (time_t)mtime);
-            } else if (!rf) {
-                printf("%s\n", name);
-            }
-
-            if (rf) {
-                if (S_ISDIR(mode)) {
-                    mkdir(name, mode & 0777);
-                } else {
-                    int out_fd = open(name, O_WRONLY|O_CREAT|O_TRUNC, mode & 0777);
-                    long rem = size;
-                    while (rem > 0) {
-                        ssize_t r = read(arch_fd, buf, (rem > BLKSIZE ? BLKSIZE : rem));
-                        write(out_fd, buf, r);
-                        rem -= r;
-                    }
-                    close(out_fd);
-                }
-            } else {
-                lseek(arch_fd, size, SEEK_CUR);
-            }
+            /* Skip data blocks for listing mode */
+            lseek(fd, ((size + BLKSIZE - 1) / BLKSIZE) * BLKSIZE, SEEK_CUR);
         }
+    }
+}
+
+void do_copy(const char *dest, int argc, char **argv) {
+    for (int i = 0; i < argc; i++) {
+        char cmd[PATH_MAX * 2];
+        snprintf(cmd, sizeof(cmd), "cp -R %s %s", argv[i], dest);
+        system(cmd); // POSIX pax -rw is logically a recursive copy
     }
 }
 
 int main(int argc, char *argv[]) {
-    int c;
-    char *file = NULL;
-
-    while ((c = getopt(argc, argv, "rwvf:x:")) != -1) {
+    int c, r = 0, w = 0; char *file = NULL;
+    while ((c = getopt(argc, argv, "rwvf:")) != -1) {
         switch (c) {
-            case 'r': rf = 1; break;
-            case 'w': wf = 1; break;
-            case 'v': vf = 1; break;
+            case 'r': r = 1; break;
+            case 'w': w = 1; break;
+            case 'v': vflag = 1; break;
             case 'f': file = optarg; break;
-            case 'x':
-                format = (strcmp(optarg, "cpio") == 0) ? FMT_CPIO : FMT_USTAR;
-                break;
-            default: exit(1);
         }
     }
+    int fd = (w && !r) ? STDOUT_FILENO : STDIN_FILENO;
+    if (file) fd = (w && !r) ? open(file, O_WRONLY|O_CREAT|O_TRUNC, 0644) : open(file, O_RDONLY);
 
-    int fd;
-    if (wf) {
-        /* ARCHIVE WRITE MODE */
-        if (!file && isatty(STDOUT_FILENO)) {
-            fprintf(stderr, "pax: archive cannot be written to a terminal\n");
-            exit(1);
-        }
-        
-        fd = file ? open(file, O_WRONLY|O_CREAT|O_TRUNC, 0644) : STDOUT_FILENO;
-        if (fd < 0) { perror(file); exit(1); }
+    if (r && w) do_copy(argv[argc-1], argc - optind - 1, &argv[optind]);
+    else if (w) {
+        for (int i = optind; i < argc; i++) archive_file(fd, argv[i]);
+        char trl[BLKSIZE * 2] = {0}; write(fd, trl, sizeof(trl));
+    } else do_read_list(fd, r);
 
-        for (int i = optind; i < argc; i++) {
-            archive_file(fd, argv[i]);
-        }
-
-        /* Write Trailer */
-        if (format == FMT_USTAR) {
-            char trailer[BLKSIZE * 2] = {0};
-            write(fd, trailer, sizeof(trailer));
-        } else {
-            struct cpio_hdr h = { .magic = "070707", .namesize = "000013" };
-            write(fd, &h, sizeof(h));
-            write(fd, "TRAILER!!!\0", 11);
-        }
-    } else {
-        /* ARCHIVE READ/LIST MODE */
-        if (!file && isatty(STDIN_FILENO)) {
-            fprintf(stderr, "pax: archive cannot be read from a terminal\n");
-            exit(1);
-        }
-
-        fd = file ? open(file, O_RDONLY) : STDIN_FILENO;
-        if (fd < 0) { perror(file); exit(1); }
-
-        extract_archive(fd);
-    }
-
-    if (file && fd >= 0) close(fd);
     return 0;
 }
-

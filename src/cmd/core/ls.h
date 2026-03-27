@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Logic from your ls.c */
 static void mode_to_str(mode_t mode, char *buf) {
     strcpy(buf, "----------");
     if (S_ISDIR(mode)) buf[0] = 'd';
