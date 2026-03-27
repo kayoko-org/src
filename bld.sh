@@ -151,12 +151,8 @@ for src_file in src/cmd/core/*.c; do
     # We use -s to strip symbols and -O2 for UNIX-standard performance
     "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAI_ROOT/bin/$bin_name" "$src_file" $LDFLAGS
 done
-
-# Specialty Adm Tools (if they aren't in core)
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/cmd/adm/login.c
 
-mkdir -p "$XAI_ROOT/usr/bin"
-"$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" src/cmd/core/hostname.c
 
 # 5. Build SBASE (The Toolchest)
 if [ ! -d "$SBASE_DIR" ]; then
@@ -167,7 +163,7 @@ fi
 
 # 6. Populate /bin (POSIX tools only)
 install -m 755 "$SBASE_DIR/sbase-box" "$XAI_ROOT/bin/.utils"
-for tool in cat whoami touch tr true tar grep uname sed awk pwd mkdir cp mv rm; do
+for tool in cat whoami touch tr true tar grep uname sed awk mkdir cp mv rm; do
     (cd "$XAI_ROOT/bin" && ln -sf .utils "$tool")
 done
 # 9. Environment Setup
