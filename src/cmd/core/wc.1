@@ -1,0 +1,38 @@
+.Dd March 27, 2026
+.Dt WC 1
+.Os Xao
+.Sh NAME
+.Nm wc
+.Nd word, line, and byte count
+.Sh SYNOPSIS
+.Nm
+.Op Fl clw
+.Op Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility displays the number of lines, words, and bytes contained in each 
+input
+.Ar file ,
+or the standard input if no file is specified.
+.Pp
+A word is defined as a non-zero length string of characters delimited by 
+white space.
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl c
+The number of bytes in each input file is written to the standard output.
+.It Fl l
+The number of lines in each input file is written to the standard output.
+.It Fl w
+The number of words in each input file is written to the standard output.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Count lines in a header file:
+.Pp
+.Dl $ wc -l stdio.h
+.Sh SEE ALSO
+.Xr isspace 3
