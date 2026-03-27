@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
             case 'v': vflag = 1; break;
             case 'm': mflag = 1; break;
             default: 
-                fprintf(stderr, "usage: uname [-asnrvm]\n");
+                fprintf(stderr, "usage: %s [-asnrvm]\n", argv[0]);
                 return 1;
         }
     }

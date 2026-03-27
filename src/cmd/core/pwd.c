@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
                 mode = 'P';
                 break;
             default:
-                fprintf(stderr, "usage: pwd [-L | -P]\n");
+                fprintf(stderr, "usage: %s [-L | -P]\n", argv[0]);
                 return 1;
         }
     }

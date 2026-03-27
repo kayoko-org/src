@@ -30,8 +30,10 @@ typedef struct {
     int is_arg;
 } file_info;
 
+char *progname;
+
 void report_error(const char *path) {
-    fprintf(stderr, "ls: %s: %s\n", path, strerror(errno));
+    fprintf(stderr, "%s: %s: %s\n", progname, path, strerror(errno));
     global_exit_status = 1;
 }
 
@@ -338,6 +340,7 @@ void list_dir(const char *path, int need_header, int first) {
 int main(int argc, char *argv[]) {
     setlocale(LC_ALL, "");
     int opt;
+    progname = argv[0];
     while ((opt = getopt(argc, argv, "Aabcdfgiklmnopqrstux1RFC")) != -1) {
         switch (opt) {
             case 'a': flag_a = 1; break;
