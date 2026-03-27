@@ -16,13 +16,13 @@ sleep 5
 # Configuration
 . ./.env
 # 1. Directory Setup (Stripped of /lib64 Linux-isms)
-mkdir -p "$XAI_ROOT/bin" "$XAI_ROOT/sbin" "$XAI_ROOT/lib" "$XAI_ROOT/etc" "$XAI_ROOT/usr"
-ln -sf ../lib "$XAI_ROOT/usr/lib"
-cp src/cmd/adm/srcmstr "$XAI_ROOT/sbin/init"
+mkdir -p "$XAO_ROOT/bin" "$XAO_ROOT/sbin" "$XAO_ROOT/lib" "$XAO_ROOT/etc" "$XAO_ROOT/usr"
+ln -sf ../lib "$XAO_ROOT/usr/lib"
+cp src/cmd/adm/srcmstr "$XAO_ROOT/sbin/init"
 
 # 1. Force Resolve and Export Paths
 # Make sure these are absolute paths and exported for sub-shells
-export XAI_ROOT="${XAI_ROOT:-$(pwd)/root}"
+export XAO_ROOT="${XAO_ROOT:-$(pwd)/root}"
 export OBJ_DIR="${OBJ_DIR:-$(pwd)/root/obj}"
 export TOOL_DIR="${TOOL_DIR:-$(pwd)/root/tools}"
 export DESTDIR="$OBJ_DIR/destdir.$ARCH"
@@ -94,33 +94,33 @@ echo "--> Updating Libc..."
 (cd "$NBSD_SRC/lib/libc" && \
     [ -d "obj" ] || $NBMAKE $FLAGS obj && \
     [ -f "obj/.depend" ] || $NBMAKE $FLAGS depend && \
-    $NBMAKE $FLAGS -j"$NPROCS" all) # We skip 'install' to manage XAI_ROOT manually
+    $NBMAKE $FLAGS -j"$NPROCS" all) # We skip 'install' to manage XAO_ROOT manually
 
 # --- 4. Artifact Extraction ---
 # Use 'cp -u' (update) if your system supports it, or just standard cp
 # because copying is fast compared to compiling.
-cp -P "$OBJ_DIR/lib/libc/libc.so"* "$XAI_ROOT/lib/"
-cp "$OBJ_DIR/lib/libc/libc.a" "$XAI_ROOT/lib/"
+cp -P "$OBJ_DIR/lib/libc/libc.so"* "$XAO_ROOT/lib/"
+cp "$OBJ_DIR/lib/libc/libc.a" "$XAO_ROOT/lib/"
 
 # --- 6. Final Header Sync ---
-echo "--> Syncing Headers to XAI_ROOT..."
-(cd "$NBSD_SRC" && $NBMAKE DESTDIR="$XAI_ROOT" $FLAGS includes)
+echo "--> Syncing Headers to XAO_ROOT..."
+(cd "$NBSD_SRC" && $NBMAKE DESTDIR="$XAO_ROOT" $FLAGS includes)
 
 # --- 3.5 Build the Kernel ---
-# Note: We use the custom "XAI" config name here
+# Note: We use the custom "XAO" config name here
 if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
     echo "--> Building Custom Xai Kernel..."
-    # If you haven't created a 'XAI' config file yet, we'll use GENERIC as a base
+    # If you haven't created a 'XAO' config file yet, we'll use GENERIC as a base
     if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAO" ]; then
         cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAO"
     fi
     
-    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=XAI)
+    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=XAO)
 fi
 
 # Kernel (Incremental if already built in obj)
 if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
-    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" "$XAI_ROOT/unix"
+    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" "$XAO_ROOT/unix"
 fi
 
 
@@ -130,9 +130,9 @@ if [ ! -x "$OKSH_DIR/oksh" ]; then
     [ -d "$OKSH_DIR" ] || git clone https://github.com/ibara/oksh.git "$OKSH_DIR"
     (cd "$OKSH_DIR" && ./configure --enable-static && make -j"$NPROCS")
 fi
-install -m 755 "$OKSH_DIR/oksh" "$XAI_ROOT/bin/ksh"
+install -m 755 "$OKSH_DIR/oksh" "$XAO_ROOT/bin/ksh"
 # POSIX sh should be ksh in this house
-ln -sf ksh "$XAI_ROOT/bin/sh"
+ln -sf ksh "$XAO_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
@@ -149,12 +149,12 @@ for src_file in src/cmd/core/*.c; do
     
     # 3. Compile as a static binary
     # We use -s to strip symbols and -O2 for UNIX-standard performance
-    "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAI_ROOT/bin/$bin_name" "$src_file" $LDFLAGS
+    "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAO_ROOT/bin/$bin_name" "$src_file" $LDFLAGS
 done
-"$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/cmd/adm/login.c
+"$REAL_CC" -O2 -static -o "$XAO_ROOT/sbin/login" src/cmd/adm/login.c
 
 # 9. Environment Setup
-cat <<EOF > "$XAI_ROOT/etc/profile"
+cat <<EOF > "$XAO_ROOT/etc/profile"
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 export HOME=/root
 export LD_PRELOAD=/lib/libkstat.so
@@ -162,25 +162,25 @@ export LD_PRELOAD=/lib/libkstat.so
 export PS1='\$(whoami)@\$(hostname):\$(pwd)> '
 EOF
 
-cat <<EOF > "$XAI_ROOT/etc/lppcfg"
+cat <<EOF > "$XAO_ROOT/etc/lppcfg"
 # Fileset:Level
 bos.rte:7.3.0.0
 bos.mp64:7.3.0.0
 devices.common.IBM.usb.rte:7.3.0.0
 EOF
 
-mkdir -p "$XAI_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$XAI_ROOT"/usr/bin
+mkdir -p "$XAO_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$XAO_ROOT"/usr/bin
 
 
-cat <<'EOF' > "$XAI_ROOT"/etc/os-release
+cat <<'EOF' > "$XAO_ROOT"/etc/os-release
 NAME="Xai"
 VERSION="7.3"
-ID=xai
+ID=xao
 PRETTY_NAME="Xai 7.3 (bos73F)"
 VERSION_ID="7.3"
-XAI_SERVICE_PACK="7300-03-02-2546"
-XAI_RECOMMENDED_LEVEL="7300-03-00-0000"
-XAI_BUILD_DATE="2026-03-25"
+XAO_SERVICE_PACK="7300-03-02-2546"
+XAO_RECOMMENDED_LEVEL="7300-03-00-0000"
+XAO_BUILD_DATE="2026-03-25"
 EOF
 
 # Build static ncurses for nvi
@@ -196,7 +196,7 @@ if [ ! -d "$HOME/ncurses-$NCURSES_VER" ]; then
 fi
 
 
-cp -Rp "$_INST"/* "$XAI_ROOT/usr/"
+cp -Rp "$_INST"/* "$XAO_ROOT/usr/"
 
 echo "--> Build Complete."
 
@@ -212,7 +212,7 @@ print "--> Building bootloader (EFI)"
 # --- Variables for GPT Image Construction ---
 
 # The final output filename (UEFI branded)
-XAI_USB_FINAL="$OBJ_DIR/xai-uefi-$(date +%Y%m%d).img"
+XAO_USB_FINAL="$OBJ_DIR/xao-uefi-$(date +%Y%m%d).img"
 
 # Intermediate partition files (the "bricks" for the image)
 EFI_IMG="$OBJ_DIR/efi.part"
@@ -227,16 +227,16 @@ mkdir -p "$OBJ_DIR"
 # 4. Combine into a GPT Disk Image
 echo "--> Initializing GPT Image..."
 # Create a 2.5GB blank file using dd since truncate is missing
-dd if=/dev/zero of="$XAI_USB_FINAL" bs=1m count=2500
+dd if=/dev/zero of="$XAO_USB_FINAL" bs=1m count=2500
 
-"$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" create
-"$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" add -t efi -s 32m
-"$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" add -t ffs -i 2
+"$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" create
+"$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" add -t efi -s 32m
+"$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" add -t ffs -i 2
 
 # 5. Extract offsets safely
 # We use 'nbgpt show' and parse it carefully
-EFI_START=$("$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" show | grep "EFI System" | awk '{print $1}')
-ROOT_START=$("$TOOL_DIR/bin/nbgpt" "$XAI_USB_FINAL" show | grep "NetBSD FFS" | awk '{print $1}')
+EFI_START=$("$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" show | grep "EFI System" | awk '{print $1}')
+ROOT_START=$("$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" show | grep "NetBSD FFS" | awk '{print $1}')
 
 # Check if we actually got numbers back to avoid 'no value specified for seek'
 if [ -z "$EFI_START" ] || [ -z "$ROOT_START" ]; then
@@ -245,8 +245,8 @@ if [ -z "$EFI_START" ] || [ -z "$ROOT_START" ]; then
 fi
 
 echo "--> Writing partitions at offsets: EFI=$EFI_START, ROOT=$ROOT_START"
-dd if="$EFI_IMG" of="$XAI_USB_FINAL" bs=512 seek="$EFI_START" conv=notrunc
-dd if="$ROOT_IMG" of="$XAI_USB_FINAL" bs=512 seek="$ROOT_START" conv=notrunc
+dd if="$EFI_IMG" of="$XAO_USB_FINAL" bs=512 seek="$EFI_START" conv=notrunc
+dd if="$ROOT_IMG" of="$XAO_USB_FINAL" bs=512 seek="$ROOT_START" conv=notrunc
 
-echo "--> $XAI_USB_FINAL"
+echo "--> $XAO_USB_FINAL"
 
