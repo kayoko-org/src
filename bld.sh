@@ -153,19 +153,6 @@ for src_file in src/cmd/core/*.c; do
 done
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/cmd/adm/login.c
 
-
-# 5. Build SBASE (The Toolchest)
-if [ ! -d "$SBASE_DIR" ]; then
-    git clone https://git.suckless.org/sbase "$SBASE_DIR"
-fi
-# Using static LDFLAGS to keep the base tools independent of the shim
-(cd "$SBASE_DIR" && make CC="$REAL_CC" LDFLAGS="-static" sbase-box)
-
-# 6. Populate /bin (POSIX tools only)
-install -m 755 "$SBASE_DIR/sbase-box" "$XAI_ROOT/bin/.utils"
-for tool in cat whoami touch tr true tar grep uname sed awk mkdir cp mv rm; do
-    (cd "$XAI_ROOT/bin" && ln -sf .utils "$tool")
-done
 # 9. Environment Setup
 cat <<EOF > "$XAI_ROOT/etc/profile"
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
