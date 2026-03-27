@@ -1,0 +1,46 @@
+.Dd March 27, 2026
+.Dt SORT 1
+.Os Xao
+.Sh NAME
+.Nm sort
+.Nd sort, merge, or sequence check text files
+.Sh SYNOPSIS
+.Nm
+.Op Fl u
+.Op Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility conforms to POSIX.1-2024. It reads lines from the specified
+.Ar file
+operands and writes them to the standard output.
+.Pp
+If no
+.Ar file
+operands are specified, or if a
+.Ar file
+operand is
+.Pq Ql - ,
+the standard input is read.
+.Pp
+The following option is supported:
+.Bl -tag -width indent
+.It Fl u
+Unique: suppress all but one in each set of lines having equal keys.
+If used with sequence checking, verify that the input file contains no
+adjacent duplicate lines.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Sort a list of names alphabetically:
+.Pp
+.Dl $ sort names.txt
+.Pp
+Sort standard input and remove duplicates:
+.Pp
+.Dl $ echo "apple\napple\norange" | sort -u
+.Sh SEE ALSO
+.Xr comm 1 ,
+.Xr join 1 ,
+.Xr uniq 1
