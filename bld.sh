@@ -138,6 +138,7 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/cmd/adm/login.c
 "$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/ls" src/cmd/core/ls.c
+"$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/echo" src/cmd/core/echo.c
 
 mkdir -p "$XAI_ROOT/usr/bin"
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" src/cmd/core/hostname.c
