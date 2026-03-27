@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 typedef struct {
     const char *label;
@@ -34,6 +35,18 @@ static const entry_t db[] = {
 };
 
 #define COUNT (sizeof(db) / sizeof(entry_t))
+
+void log_action(const char *cmd) {
+    FILE *fp = fopen("/var/log/sysmgr.log", "a");
+    if (fp == NULL) return; // Fail silently if we can't write (e.g. no root)
+
+    time_t now = time(NULL);
+    char *ts = ctime(&now);
+    ts[strlen(ts) - 1] = '\0'; // Remove newline from ctime
+
+    fprintf(fp, "[%s] EXEC: %s\n", ts, cmd);
+    fclose(fp);
+}
 
 void sys_cooked() {
     endwin();
@@ -87,7 +100,8 @@ void execute(const entry_t *ent, int preview) {
         delwin(pw);
         return;
     }
-
+    
+    log_action(final_cmd);
     sys_cooked();
     printf("\x1b[2J\x1b[H"); 
     printf("%s\n", final_cmd);
