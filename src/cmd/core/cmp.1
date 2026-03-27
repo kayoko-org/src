@@ -1,0 +1,38 @@
+.Dd March 27, 2026
+.Dt CMP 1
+.Os Xao
+.Sh NAME
+.Nm cmp
+.Nd compare two files
+.Sh SYNOPSIS
+.Nm
+.Op Fl ls
+.Ar file1 file2
+.Sh DESCRIPTION
+The
+.Nm
+utility compares two files of any type and writes the results to the standard output.
+By default,
+.Nm
+is silent if the files are the same; if they differ, the byte and line number 
+at which the first difference occurred is reported.
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl l
+Write the byte number (decimal) and the differing bytes (octal) for each difference.
+.It Fl s
+Silent mode. Do not write anything for differing files.
+.El
+.Sh EXIT STATUS
+.Bl -tag -width indent
+.It 0
+The files are identical.
+.It 1
+The files are different.
+.It >1
+An error occurred.
+.El
+.Sh SEE ALSO
+.Xr diff 1 ,
+.Xr comm 1
