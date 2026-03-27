@@ -136,9 +136,24 @@ ln -sf ksh "$XAI_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
+# --- 4. Build Xai Core Utilities ---
+echo "--> Building Xai Core Utilities..."
+for src_file in src/cmd/core/*.c; do
+    # 1. Strip the directory path: 'ls.c'
+    base_name=$(basename "$src_file")
+    
+    # 2. Strip the extension: 'ls'
+    bin_name="${base_name%.c}"
+    
+    echo "    Compiling $bin_name..."
+    
+    # 3. Compile as a static binary
+    # We use -s to strip symbols and -O2 for UNIX-standard performance
+    "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAI_ROOT/bin/$bin_name" "$src_file" $LDFLAGS
+done
+
+# Specialty Adm Tools (if they aren't in core)
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/sbin/login" src/cmd/adm/login.c
-"$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/ls" src/cmd/core/ls.c
-"$REAL_CC" -O2 -static -s -o "$XAI_ROOT/bin/echo" src/cmd/core/echo.c
 
 mkdir -p "$XAI_ROOT/usr/bin"
 "$REAL_CC" -O2 -static -o "$XAI_ROOT/usr/bin/hostname" src/cmd/core/hostname.c
