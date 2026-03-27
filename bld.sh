@@ -144,34 +144,52 @@ ln -sf ksh "$XAO_ROOT/bin/sh"
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
 # --- 4. Build Xai Core Utilities ---
-echo "--> Building Xai Core Utilities..."
+echo "--> Building Xao Core Utilities..."
 for src_file in src/cmd/core/*.c; do
-    # 1. Strip the directory path: 'ls.c'
+    # 1. Strip the directory path and extension
     base_name=$(basename "$src_file")
-    
-    # 2. Strip the extension: 'ls'
     bin_name="${base_name%.c}"
-    
-    echo "$bin_name..."
-    
+
+    # 2. Determine the target directory
+    case "$bin_name" in
+        ls|cp|mv|rm|cat|echo|pwd|mkdir|rmdir|chmod|chgrp|ed)
+            DEST_DIR="$XAO_ROOT/bin"
+            ;;
+        *)
+            DEST_DIR="$XAO_ROOT/usr/bin"
+            ;;
+    esac
+
+    echo "	[CC] $base_name"
+
     # 3. Compile as a static binary
-    # We use -s to strip symbols and -O2 for UNIX-standard performance
-    "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAO_ROOT/bin/$bin_name" "$src_file" $LDFLAGS
+    # Note: Ensure $XAO_ROOT/usr/bin exists before running this!
+    "$REAL_CC" $CFLAGS -O2 -static -s -o "$DEST_DIR/$bin_name" "$src_file" $LDFLAGS
 done
-echo "--> Building Xai Administrative Utilities..."
+echo "--> Building Xao Administrative Utilities..."
 for src_file in src/cmd/adm/*.c; do
-    # 1. Strip the directory path: 'ls.c'
-    base_name=$(basename "$src_file")
-    
-    # 2. Strip the extension: 'ls'
-    bin_name="${base_name%.c}"
-    
-    echo "$bin_name..."
-    
-    # 3. Compile as a static binary
-    # We use -s to strip symbols and -O2 for UNIX-standard performance
-    "$REAL_CC" $CFLAGS -O2 -static -s -o "$XAO_ROOT/sbin/$bin_name" "$src_file" $LDFLAGS
+    # 1. Extract the base name (e.g., 'sysmgr')
+    base_name=$(basename "$src_file" .c)
+
+    # 2. Skip special cases that need custom linking (we handle these later)
+    if [ "$base_name" = "sysmgr" ]; then
+        continue
+    fi
+
+    echo "  [CC] $base_name"
+
+    # 3. Standard compilation
+    "$REAL_CC" $CFLAGS -O2 -static -s \
+        -o "$XAO_ROOT/sbin/$base_name" \
+        "$src_file" $LDFLAGS
 done
+
+# 4. Handle Special Case: sysmgr (needs -lcurses -lterminfo)
+echo "  [CC] sysmgr (special)"
+"$REAL_CC" $CFLAGS -O2 -static -s \
+    -o "$XAO_ROOT/sbin/sysmgr" \
+    src/cmd/adm/sysmgr.c \
+    -lcurses -lterminfo $LDFLAGS
 
 
 # 9. Environment Setup
