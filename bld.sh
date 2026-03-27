@@ -53,11 +53,18 @@ if [ ! -d "$NBSD_SRC/.git" ]; then
     echo "--> Cloning NetBSD source..."
     git clone --depth 1 https://github.com/NetBSD/src.git "$NBSD_SRC"
 fi
-
 # --- 2. Xai Branding ---
+# --- 1. Build the "Tools" ---
 if [ ! -x "$NBMAKE" ]; then
     echo "--> Tools missing. Building NetBSD Toolchain..."
-    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" tools)
+    
+    # We UNSET the flags that interfere with the toolchain's internal tests
+    (cd "$NBSD_SRC" && env -i \
+        PATH="/usr/bin:/bin:/usr/X11R7/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/local/bin" \
+        TERM="$TERM" \
+        HOME="$HOME" \
+        USER="$USER" \
+        ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" -u tools)
 fi
 
 # --- 2. Branding (Only if changed) ---
