@@ -1,29 +1,33 @@
+#include <errno.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 extern char **environ;
 
 int main(int argc, char *argv[]) {
     int opt;
-    char **ep;
+    static char *empty[] = { NULL };
 
-    /* Handle the -i (ignore environment) flag */
+    /* * POSIX requires -i to ignore the inherited environment.
+     * We point environ to an empty array to be safer than just setting *environ = NULL.
+     */
     while ((opt = getopt(argc, argv, "i")) != -1) {
         switch (opt) {
             case 'i':
-                *environ = NULL;
+                environ = empty;
                 break;
             default:
                 fprintf(stderr, "usage: env [-i] [name=value ...] [utility [argument ...]]\n");
                 return 1;
         }
     }
-    argc -= optind;
     argv += optind;
 
-    /* Handle name=value assignments */
+    /* * Handle name=value assignments. 
+     * POSIX says these must precede the utility name.
+     */
     while (*argv && strchr(*argv, '=')) {
         if (putenv(*argv) != 0) {
             perror("putenv");
@@ -32,18 +36,25 @@ int main(int argc, char *argv[]) {
         argv++;
     }
 
-    /* If no utility is specified, print the environment and exit */
+    /* * If no utility is specified, print the resulting environment and exit.
+     * puts() is used here for a slightly leaner line count than printf.
+     */
     if (*argv == NULL) {
+        char **ep;
         for (ep = environ; *ep; ep++) {
-            printf("%s\n", *ep);
+            puts(*ep);
         }
         return 0;
     }
 
-    /* Execute the utility */
+    /* * Execute the utility with the modified environment.
+     */
     execvp(*argv, argv);
 
-    /* If we get here, execvp failed */
-    perror(*argv);
-    return 127;
+    /* * If execvp returns, an error occurred.
+     * POSIX 127: Utility not found.
+     * POSIX 126: Utility found but not executable.
+     */
+    fprintf(stderr, "env: %s: %s\n", *argv, strerror(errno));
+    return (errno == ENOENT) ? 127 : 126;
 }
