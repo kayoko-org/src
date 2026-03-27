@@ -27,12 +27,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* POSIX: If there are extra operands (non-option arguments), it's an error */
-    if (optind < argc) {
-        fprintf(stderr, "uname: extra operand '%s'\n", argv[optind]);
-        return 1;
-    }
-
     /* FIX: If no flags at all were set, default to -s */
     if (!(aflag || sflag || nflag || rflag || vflag || mflag)) {
         sflag = 1;
