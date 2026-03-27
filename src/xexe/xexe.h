@@ -40,5 +40,12 @@ struct xexe_shdr {
     uint32_t s_flags;         /* Flags (0x20=Text, 0x40=Data) */
 } __attribute__((packed));
 
+struct xexe_reloc {
+    uint64_t r_vaddr;     /* Address of reference */
+    uint32_t r_symndx;    /* Index into symbol table */
+    uint16_t r_type;      /* Relocation type (Arch-specific) */
+    uint16_t r_pad;       /* Keep it 16-byte aligned */
+} __attribute__((packed));
+
 #endif
 

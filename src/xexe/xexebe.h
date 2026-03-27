@@ -26,7 +26,7 @@ struct xexebe_ohdr {
 } __attribute__((packed));
 
 struct xexebe_shdr {
-    char     s_name[8];
+char     s_name[8];
     uint64_t s_vaddr;
     uint64_t s_paddr;
     uint64_t s_size;
@@ -35,6 +35,13 @@ struct xexebe_shdr {
     uint16_t s_nreloc;
     uint16_t s_pad;
     uint32_t s_flags;
+} __attribute__((packed));
+
+struct xexe_reloc {
+    uint64_t r_vaddr;     /* Address of reference */
+    uint32_t r_symndx;    /* Index into symbol table */
+    uint16_t r_type;      /* Relocation type (Arch-specific) */
+    uint16_t r_pad;       /* Keep it 16-byte aligned */
 } __attribute__((packed));
 
 #endif
