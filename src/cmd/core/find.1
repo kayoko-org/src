@@ -1,0 +1,93 @@
+.Dd March 28, 2026
+.Dt FIND 1
+.Os Xao
+.Sh NAME
+.Nm find
+.Nd walk a file hierarchy
+.Sh SYNOPSIS
+.Nm find
+.Op Ar path
+.Op Fl name Ar pattern
+.Op Fl type Ar type
+.Op Fl exec Ar command \&\& "{" "}" \&+
+.Sh DESCRIPTION
+The
+.Nm
+utility recursively descends the directory hierarchy for each
+.Op Ar path , 
+applying specified tests and actions to files and directories
+found. By default, the top-level directory specified is always
+included in the output.
+
+If no
+.Op Ar path
+is provided, the current directory
+.Pq Sq \&.
+is used as the default.
+
+.Bl -tag -width ".Fl exec Ar command"
+.It Fl name Ar pattern
+Match the file name against the
+.Ar pattern .
+The
+.Ar pattern
+follows shell globbing rules (like
+.Xr fnmatch 3 ) .
+For example:
+.Ql \&*.c
+matches all files ending with
+.Ql .c .
+
+.It Fl type Ar type
+Select files that match the specified type. The
+.Ar type
+can be one of the following:
+.Bl -tag -width ".Fl type"
+.It f
+Regular files.
+.It d
+Directories.
+.El
+
+.It Fl exec Ar command \&\& "{" "}" \&+
+Execute the given
+.Ar command
+for each matching file or directory. The
+.Ar command
+should include
+.Sq \&{ }
+as a placeholder for the full file path.
+The
+.Ar command
+is executed once for each matching file.
+.Pp
+The
+.Sq + 
+indicates that multiple files may be passed to the command.
+
+.Example:
+find . -name "*.c" -exec rm {} +
+matches all
+.Ql .c
+files in the current directory and removes them.
+
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+# Find all files in the /
+find /
+
+# Find all files matching *.txt
+find . -name "*.txt"
+
+# Find all directories in /etc
+find /etc -type d
+
+# Find and remove all *.o files
+find . -name "*.o" -exec rm {} +
+.Ed
+.Sh SEE ALSO
+.Xr rm 1 ,
+.Xr ls 1 ,
+.Xr fnmatch 3
+

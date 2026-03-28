@@ -1,32 +1,81 @@
-.Dd March 27, 2026
+.Dd March 28, 2026
 .Dt ID 1
 .Os Xao
 .Sh NAME
 .Nm id
-.Nd return user identity
+.Nd display user and group information
 .Sh SYNOPSIS
 .Nm
-.Op Ar user
+.Op Fl u
+.Op Fl g
+.Op Fl G
+.Op Fl n
 .Sh DESCRIPTION
 The
 .Nm
-utility writes a line to the standard output containing the user and 
-group IDs and the corresponding names of the invoking process.
+utility displays the numeric or name-based user and group identifiers
+of the invoking process, supplementary group memberships, or the specified user.
 .Pp
-If the effective and real IDs are different, both are displayed.
-Any supplementary group memberships are also displayed.
+By default, the output includes the following information:
+.Bl -bullet
+.It
+The real and possibly effective user ID and name.
+.It
+The real and possibly effective group ID and name.
+.It
+A list of supplementary groups associated with the user.
+.El
+.Sh OPTIONS
+The following options are available:
+.Bl -tag -width Ds
+.It Fl u
+Display the real user ID of the invoking process.
+.It Fl g
+Display the real group ID of the invoking process.
+.It Fl G
+Display the list of supplementary group IDs.
+.It Fl n
+Output names instead of numeric IDs. This option modifies the behavior of
+.Fl u ,
+.Fl g , and
+.Fl G .
+.El
+Multiple options can be combined. For example,
+.Dq Nm Fl un
+displays the invoking user's login name.
 .Pp
-If a
-.Ar user
-operand is provided, the identity of that user is displayed instead 
-of the invoking process.
+If no options are specified, all user and group information is displayed.
 .Sh EXIT STATUS
 .Ex -std
+The
+.Nm
+utility exits with one of the following values:
+.Bl -tag -width 4n
+.It 0
+Success.
+.It 1
+An error occurred, such as an invalid option or failure resolving IDs.
+.El
 .Sh EXAMPLES
 Display current user and group information:
 .Pp
 .Dl $ id
+.Pp
+Display only the real user ID:
+.Pp
+.Dl $ id -u
+.Pp
+Display only the real group name:
+.Pp
+.Dl $ id -gn
+.Pp
+List supplementary group names:
+.Pp
+.Dl $ id -Gn
 .Sh SEE ALSO
+.Xr getuid 2 ,
+.Xr getgid 2 ,
 .Xr getgroups 2 ,
 .Xr getpwuid 3 ,
+.Xr getgrgid 3 ,
 .Xr whoami 1
