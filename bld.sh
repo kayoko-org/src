@@ -160,7 +160,7 @@ for src_file in src/cmd/core/*.c; do
             ;;
     esac
 
-    echo "	[CC] $base_name"
+    echo "	[CC] $base_name -o $DEST_DIR/$bin_name"
 
     # 3. Compile as a static binary
     # Note: Ensure $XAO_ROOT/usr/bin exists before running this!
@@ -180,7 +180,7 @@ for src_file in src/cmd/adm/*.c; do
         continue
     fi
 
-    echo "  [CC] $base_name"
+    echo "  [CC] $base_name -o $DEST_DIR/$bin_name"
 
     # 3. Standard compilation
     "$REAL_CC" $CFLAGS -O2 -static -s \

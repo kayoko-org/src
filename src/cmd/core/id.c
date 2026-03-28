@@ -5,125 +5,121 @@
 #include <grp.h>
 #include <sys/types.h>
 #include <string.h>
-#include <errno.h>
 
-extern char **environ;  // Include if you decide to use extra logic later
-
-void print_uid(uid_t uid, int numeric) {
-    if (numeric) {
-        printf("%u", (unsigned int)uid);
+/* Helper to print name/ID pairs: tag=%u(%s) */
+/* Per POSIX: if name lookup fails, the (%s) part is omitted */
+void print_full_id(const char *tag, uid_t id, int is_group, int first) {
+    if (!first) putchar(' ');
+    printf("%s=%u", tag, (unsigned int)id);
+    
+    if (is_group) {
+        struct group *gr = getgrgid(id);
+        if (gr) printf("(%s)", gr->gr_name);
     } else {
-        struct passwd *pw = getpwuid(uid);
-        if (pw) {
-            printf("%s", pw->pw_name);
-        } else {
-            fprintf(stderr, "id: no name for user ID %u\n", (unsigned int)uid);
-            exit(1);
-        }
+        struct passwd *pw = getpwuid(id);
+        if (pw) printf("(%s)", pw->pw_name);
     }
-}
-
-void print_gid(gid_t gid, int numeric, const char *prefix) {
-    if (numeric) {
-        printf("%s%u", prefix, (unsigned int)gid);
-    } else {
-        struct group *gr = getgrgid(gid);
-        if (gr) {
-            printf("%s%s", prefix, gr->gr_name);
-        } else {
-            fprintf(stderr, "id: no name for group ID %u\n", (unsigned int)gid);
-            exit(1);
-        }
-    }
-}
-
-void print_groups(int numeric) {
-    int ngroups = getgroups(0, NULL);
-    if (ngroups > 0) {
-        gid_t *groups = malloc(ngroups * sizeof(gid_t));
-        ngroups = getgroups(ngroups, groups);
-        for (int i = 0; i < ngroups; i++) {
-            if (i > 0) putchar(' ');
-            if (numeric) {
-                printf("%u", (unsigned int)groups[i]);
-            } else {
-                struct group *gr = getgrgid(groups[i]);
-                if (gr) {
-                    printf("%s", gr->gr_name);
-                } else {
-                    fprintf(stderr, "id: no name for group ID %u\n", (unsigned int)groups[i]);
-                    free(groups);
-                    exit(1);
-                }
-            }
-        }
-        free(groups);
-    }
-    putchar('\n');
 }
 
 int main(int argc, char *argv[]) {
     int opt;
-    int show_uid = 0, show_gid = 0, show_groups = 0;
-    int numeric = 1;  // Default to numeric output
-
-    while ((opt = getopt(argc, argv, "ugGn")) != -1) {
+    int uflag = 0, gflag = 0, Gflag = 0, nflag = 0, rflag = 0;
+    
+    while ((opt = getopt(argc, argv, "ugGnr")) != -1) {
         switch (opt) {
-            case 'u':
-                show_uid = 1;
-                break;
-            case 'g':
-                show_gid = 1;
-                break;
-            case 'G':
-                show_groups = 1;
-                break;
-            case 'n':
-                numeric = 0;
-                break;
+            case 'u': uflag = 1; break;
+            case 'g': gflag = 1; break;
+            case 'G': Gflag = 1; break;
+            case 'n': nflag = 1; break;
+            case 'r': rflag = 1; break;
             default:
-                fprintf(stderr, "usage: id [-u] [-g] [-G] [-n]\n");
+                fprintf(stderr, "usage: id [user]\n       id -G [-n] [user]\n       id -g [-nr] [user]\n       id -u [-nr] [user]\n");
                 return 1;
         }
     }
 
-    if (show_uid) {
-        uid_t uid = getuid();  // Real user ID
-        print_uid(uid, numeric);
-        putchar('\n');
-    }
+    uid_t ruid, euid;
+    gid_t rgid, egid;
+    gid_t *groups;
+    int ngroups;
 
-    if (show_gid) {
-        gid_t gid = getgid();  // Real group ID
-        print_gid(gid, numeric, "");
-        putchar('\n');
-    }
-
-    if (show_groups) {
-        print_groups(numeric);
-    }
-
-    // Default case: Print everything
-    if (!(show_uid || show_gid || show_groups)) {
-        uid_t ruid = getuid();
-        gid_t rgid = getgid();
-        uid_t euid = geteuid();
-        gid_t egid = getegid();
-
-        print_uid(ruid, 1); putchar(' ');
-        print_gid(rgid, 1, "gid=");
-
-        // Show effective IDs if different
-        if (ruid != euid) {
-            putchar(' '); print_uid(euid, 1);
+    if (optind < argc) {
+        /* Lookup specific user provided as operand */
+        struct passwd *pw = getpwnam(argv[optind]);
+        if (!pw) {
+            fprintf(stderr, "id: %s: no such user\n", argv[optind]);
+            return 1;
         }
-        if (rgid != egid) {
-            putchar(' '); print_gid(egid, 1, " egid=");
+        ruid = euid = pw->pw_uid;
+        rgid = egid = pw->pw_gid;
+        
+        /* Fetch groups for selected user */
+        ngroups = 100; 
+        groups = malloc(ngroups * sizeof(gid_t));
+        if (getgrouplist(argv[optind], rgid, groups, &ngroups) == -1) {
+            groups = realloc(groups, ngroups * sizeof(gid_t));
+            getgrouplist(argv[optind], rgid, groups, &ngroups);
         }
-
-        printf(" groups=");
-        print_groups(1);
+    } else {
+        /* Use invoking process IDs */
+        ruid = getuid();
+        euid = geteuid();
+        rgid = getgid();
+        egid = getegid();
+        ngroups = getgroups(0, NULL);
+        groups = malloc(ngroups * sizeof(gid_t));
+        ngroups = getgroups(ngroups, groups);
     }
 
+    if (uflag) {
+        uid_t target = rflag ? ruid : euid;
+        if (nflag) {
+            struct passwd *pw = getpwuid(target);
+            if (pw) printf("%s\n", pw->pw_name);
+            else printf("%u\n", (unsigned int)target);
+        } else printf("%u\n", (unsigned int)target);
+    } 
+    else if (gflag) {
+        gid_t target = rflag ? rgid : egid;
+        if (nflag) {
+            struct group *gr = getgrgid(target);
+            if (gr) printf("%s\n", gr->gr_name);
+            else printf("%u\n", (unsigned int)target);
+        } else printf("%u\n", (unsigned int)target);
+    } 
+    else if (Gflag) {
+        /* -G uses format "%u" with space separation */
+        for (int i = 0; i < ngroups; i++) {
+            if (nflag) {
+                struct group *gr = getgrgid(groups[i]);
+                printf("%s", gr ? gr->gr_name : "");
+            } else {
+                printf("%u", (unsigned int)groups[i]);
+            }
+            printf("%s", (i == ngroups - 1) ? "" : " ");
+        }
+        printf("\n");
+    } 
+    else {
+        /* Default Case: uid=... gid=... groups=... */
+        print_full_id("uid", ruid, 0, 1);
+        print_full_id("gid", rgid, 1, 0);
+
+        if (euid != ruid) print_full_id("euid", euid, 0, 0);
+        if (egid != rgid) print_full_id("egid", egid, 1, 0);
+
+        if (ngroups > 0) {
+            printf(" groups=");
+            for (int i = 0; i < ngroups; i++) {
+                printf("%u", (unsigned int)groups[i]);
+                struct group *gr = getgrgid(groups[i]);
+                if (gr) printf("(%s)", gr->gr_name);
+                if (i < ngroups - 1) putchar(',');
+            }
+        }
+        printf("\n");
+    }
+
+    free(groups);
     return 0;
 }
