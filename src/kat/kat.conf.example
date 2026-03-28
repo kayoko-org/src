@@ -1,5 +1,5 @@
 # ==========================================================
-# openXao Kernel Access Table (KAT) Configuration
+# Kayako Kernel Access Table (KAT) Configuration
 # Format: <user|%group>:<binary_path>:<privileges>
 # ==========================================================
 

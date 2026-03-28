@@ -16,13 +16,13 @@ sleep 5
 # Configuration
 . ./.env
 # 1. Directory Setup (Stripped of /lib64 Linux-isms)
-mkdir -p "$XAO_ROOT/bin" "$XAO_ROOT/sbin" "$XAO_ROOT/lib" "$XAO_ROOT/etc" "$XAO_ROOT/usr"
-ln -sf ../lib "$XAO_ROOT/usr/lib"
-cp src/cmd/adm/srcmstr "$XAO_ROOT/sbin/init"
+mkdir -p "$KAYAKO_ROOT/bin" "$KAYAKO_ROOT/sbin" "$KAYAKO_ROOT/lib" "$KAYAKO_ROOT/etc" "$KAYAKO_ROOT/usr"
+ln -sf ../lib "$KAYAKO_ROOT/usr/lib"
+cp src/cmd/adm/srcmstr "$KAYAKO_ROOT/sbin/init"
 
 # 1. Force Resolve and Export Paths
 # Make sure these are absolute paths and exported for sub-shells
-export XAO_ROOT="${XAO_ROOT:-$(pwd)/root}"
+export KAYAKO_ROOT="${KAYAKO_ROOT:-$(pwd)/root}"
 export OBJ_DIR="${OBJ_DIR:-$(pwd)/root/obj}"
 export TOOL_DIR="${TOOL_DIR:-$(pwd)/root/tools}"
 export DESTDIR="$OBJ_DIR/destdir.$ARCH"
@@ -50,10 +50,10 @@ export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
 
 # This only needs to happen once. It prevents all header skew.
 if [ ! -d "$NBSD_SRC/.git" ]; then
-    echo "--> Cloning openXao gate..."
-    git clone --depth 1 https://github.com/openXao/gate.git "$NBSD_SRC"
+    echo "--> Cloning Kayako gate..."
+    git clone --depth 1 https://github.com/Kayako/gate.git "$NBSD_SRC"
 fi
-# --- 2. Xao Branding ---
+# --- 2. Kayako Branding ---
 # --- 1. Build the "Tools" ---
 if [ ! -x "$NBMAKE" ]; then
     echo "--> Tools missing. Building NetBSD Toolchain..."
@@ -69,10 +69,10 @@ fi
 
 # --- 2. Branding (Only if changed) ---
 # We use a marker file to avoid unnecessary sed runs
-if [ ! -f "$NBSD_SRC/.xao_branded" ]; then
-    echo "--> Applying Xao Branding..."
-    sed -i 's/ost="NetBSD"/ost="openXao"/' "$NBSD_SRC"/sys/conf/newvers.sh
-    touch "$NBSD_SRC/.xao_branded"
+if [ ! -f "$NBSD_SRC/.kayako_branded" ]; then
+    echo "--> Applying Kayako Branding..."
+    sed -i 's/ost="NetBSD"/ost="Kayako"/' "$NBSD_SRC"/sys/conf/newvers.sh
+    touch "$NBSD_SRC/.kayako_branded"
 fi
 
 # Helper function for incremental component builds
@@ -101,33 +101,33 @@ echo "--> Updating Libc..."
 (cd "$NBSD_SRC/lib/libc" && \
     [ -d "obj" ] || $NBMAKE $FLAGS obj && \
     [ -f "obj/.depend" ] || $NBMAKE $FLAGS depend && \
-    $NBMAKE $FLAGS -j"$NPROCS" all) # We skip 'install' to manage XAO_ROOT manually
+    $NBMAKE $FLAGS -j"$NPROCS" all) # We skip 'install' to manage KAYAKO_ROOT manually
 
 # --- 4. Artifact Extraction ---
 # Use 'cp -u' (update) if your system supports it, or just standard cp
 # because copying is fast compared to compiling.
-cp -P "$OBJ_DIR/lib/libc/libc.so"* "$XAO_ROOT/lib/"
-cp "$OBJ_DIR/lib/libc/libc.a" "$XAO_ROOT/lib/"
+cp -P "$OBJ_DIR/lib/libc/libc.so"* "$KAYAKO_ROOT/lib/"
+cp "$OBJ_DIR/lib/libc/libc.a" "$KAYAKO_ROOT/lib/"
 
 # --- 6. Final Header Sync ---
-echo "--> Syncing Headers to XAO_ROOT..."
-(cd "$NBSD_SRC" && $NBMAKE DESTDIR="$XAO_ROOT" $FLAGS includes)
+echo "--> Syncing Headers to KAYAKO_ROOT..."
+(cd "$NBSD_SRC" && $NBMAKE DESTDIR="$KAYAKO_ROOT" $FLAGS includes)
 
 # --- 3.5 Build the Kernel ---
-# Note: We use the custom "XAO" config name here
-if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
-    echo "--> Building Custom Xao Kernel..."
-    # If you haven't created a 'XAO' config file yet, we'll use GENERIC as a base
-    if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAO" ]; then
-        cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAO"
+# Note: We use the custom "KAYAKO" config name here
+if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/KAYAKO/netbsd" ]; then
+    echo "--> Building Custom Kayako Kernel..."
+    # If you haven't created a 'KAYAKO' config file yet, we'll use GENERIC as a base
+    if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/KAYAKO" ]; then
+        cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/KAYAKO"
     fi
     
-    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=XAO)
+    (cd "$NBSD_SRC" && ./build.sh -m "$ARCH" -T "$TOOL_DIR" -O "$OBJ_DIR" kernel=KAYAKO)
 fi
 
 # Kernel (Incremental if already built in obj)
-if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
-    cp "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" "$XAO_ROOT/unix"
+if [ -f "$OBJ_DIR/sys/arch/$ARCH/compile/KAYAKO/netbsd" ]; then
+    cp "$OBJ_DIR/sys/arch/$ARCH/compile/KAYAKO/netbsd" "$KAYAKO_ROOT/unix"
 fi
 
 
@@ -137,14 +137,14 @@ if [ ! -x "$OKSH_DIR/oksh" ]; then
     [ -d "$OKSH_DIR" ] || git clone https://github.com/ibara/oksh.git "$OKSH_DIR"
     (cd "$OKSH_DIR" && ./configure --enable-static && make -j"$NPROCS")
 fi
-install -m 755 "$OKSH_DIR/oksh" "$XAO_ROOT/bin/ksh"
+install -m 755 "$OKSH_DIR/oksh" "$KAYAKO_ROOT/bin/ksh"
 # POSIX sh should be ksh in this house
-ln -sf ksh "$XAO_ROOT/bin/sh"
+ln -sf ksh "$KAYAKO_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
-# --- 4. Build Xao Core Utilities ---
-echo "--> Building Xao Core Utilities..."
+# --- 4. Build Kayako Core Utilities ---
+echo "--> Building Kayako Core Utilities..."
 for src_file in src/cmd/core/*.c; do
     # 1. Strip the directory path and extension
     base_name=$(basename "$src_file")
@@ -153,21 +153,21 @@ for src_file in src/cmd/core/*.c; do
     # 2. Determine the target directory
     case "$bin_name" in
         ls|cp|mv|rm|cat|echo|pwd|mkdir|rmdir|chmod|chgrp|ed)
-            DEST_DIR="$XAO_ROOT/bin"
+            DEST_DIR="$KAYAKO_ROOT/bin"
             ;;
         *)
-            DEST_DIR="$XAO_ROOT/usr/bin"
+            DEST_DIR="$KAYAKO_ROOT/usr/bin"
             ;;
     esac
 
     echo "	[CC] $base_name -o $DEST_DIR/$bin_name"
 
     # 3. Compile as a static binary
-    # Note: Ensure $XAO_ROOT/usr/bin exists before running this!
+    # Note: Ensure $KAYAKO_ROOT/usr/bin exists before running this!
     "$REAL_CC" $CFLAGS -O2 -static -s -o "$DEST_DIR/$bin_name" "$src_file" $LDFLAGS
-    "$XAO_ROOT/usr/bin/ln" -s "$XAO_ROOT/bin/ed" "$XAO_ROOT/bin/red"
+    "$KAYAKO_ROOT/usr/bin/ln" -s "$KAYAKO_ROOT/bin/ed" "$KAYAKO_ROOT/bin/red"
 done
-echo "--> Building Xao Administrative Utilities..."
+echo "--> Building Kayako Administrative Utilities..."
 for src_file in src/cmd/adm/*.c; do
     # 1. Extract the base name (e.g., 'sysmgr')
     base_name=$(basename "$src_file" .c)
@@ -189,34 +189,34 @@ for src_file in src/cmd/adm/*.c; do
 
     # 3. Standard compilation
     "$REAL_CC" $CFLAGS -O2 -static -s \
-        -o "$XAO_ROOT/sbin/$base_name" \
+        -o "$KAYAKO_ROOT/sbin/$base_name" \
         "$src_file" $LDFLAGS
 done
 
 # 4. Handle Special Case: sysmgr (needs -lcurses -lterminfo)
 echo "  [CC] lsdsk (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
-    -o "$XAO_ROOT/bin/lsdsk" \
+    -o "$KAYAKO_ROOT/bin/lsdsk" \
     src/cmd/adm/lsdsk.c \
-    -lprop -lutil $LDFLAGS && chflags schg $XAO_ROOT/bin/lsdsk
+    -lprop -lutil $LDFLAGS && chflags schg $KAYAKO_ROOT/bin/lsdsk
 
 
 echo "  [CC] login (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
-    -o "$XAO_ROOT/sbin/login" \
+    -o "$KAYAKO_ROOT/sbin/login" \
     src/cmd/adm/login.c \
-    -lcrypt -lutil $LDFLAGS && chflags schg $XAO_ROOT/sbin/login
+    -lcrypt -lutil $LDFLAGS && chflags schg $KAYAKO_ROOT/sbin/login
 
 
 echo "  [CC] sysmgr (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
-    -o "$XAO_ROOT/sbin/sysmgr" \
+    -o "$KAYAKO_ROOT/sbin/sysmgr" \
     src/cmd/adm/sysmgr.c \
     -lcurses -lterminfo $LDFLAGS
 
 
 # 9. Environment Setup
-cat <<EOF > "$XAO_ROOT/etc/profile"
+cat <<EOF > "$KAYAKO_ROOT/etc/profile"
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 export HOME=/root
 export LD_PRELOAD=/lib/libkstat.so
@@ -224,25 +224,25 @@ export LD_PRELOAD=/lib/libkstat.so
 export PS1='\$(whoami)@\$(hostname):\$(pwd)> '
 EOF
 
-cat <<EOF > "$XAO_ROOT/etc/lppcfg"
+cat <<EOF > "$KAYAKO_ROOT/etc/lppcfg"
 # Fileset:Level
 bos.rte:7.3.0.0
 bos.mp64:7.3.0.0
 devices.common.IBM.usb.rte:7.3.0.0
 EOF
 
-mkdir -p "$XAO_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$XAO_ROOT"/usr/bin
+mkdir -p "$KAYAKO_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$KAYAKO_ROOT"/usr/bin
 
 
-cat <<'EOF' > "$XAO_ROOT"/etc/os-release
-NAME="openxao"
+cat <<'EOF' > "$KAYAKO_ROOT"/etc/os-release
+NAME="openkayako"
 VERSION="7.3"
-ID=xao
-PRETTY_NAME="openXao"
+ID=kayako
+PRETTY_NAME="Kayako"
 VERSION_ID="7.3"
-XAO_SERVICE_PACK="7300-03-02-2546"
-XAO_RECOMMENDED_LEVEL="7300-03-00-0000"
-XAO_BUILD_DATE="2026-03-25"
+KAYAKO_SERVICE_PACK="7300-03-02-2546"
+KAYAKO_RECOMMENDED_LEVEL="7300-03-00-0000"
+KAYAKO_BUILD_DATE="2026-03-25"
 EOF
 
 # Build static ncurses for nvi
@@ -258,7 +258,7 @@ if [ ! -d "$HOME/ncurses-$NCURSES_VER" ]; then
 fi
 
 
-cp -Rp "$_INST"/* "$XAO_ROOT/usr/"
+cp -Rp "$_INST"/* "$KAYAKO_ROOT/usr/"
 
 echo "--> Build Complete."
 
@@ -274,7 +274,7 @@ print "--> Building bootloader (EFI)"
 # --- Variables for GPT Image Construction ---
 
 # The final output filename (UEFI branded)
-XAO_USB_FINAL="$OBJ_DIR/xao-uefi-$(date +%Y%m%d).img"
+KAYAKO_USB_FINAL="$OBJ_DIR/kayako-uefi-$(date +%Y%m%d).img"
 
 # Intermediate partition files (the "bricks" for the image)
 EFI_IMG="$OBJ_DIR/efi.part"
@@ -289,16 +289,16 @@ mkdir -p "$OBJ_DIR"
 # 4. Combine into a GPT Disk Image
 echo "--> Initializing GPT Image..."
 # Create a 2.5GB blank file using dd since truncate is missing
-dd if=/dev/zero of="$XAO_USB_FINAL" bs=1m count=2500
+dd if=/dev/zero of="$KAYAKO_USB_FINAL" bs=1m count=2500
 
-"$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" create
-"$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" add -t efi -s 32m
-"$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" add -t ffs -i 2
+"$TOOL_DIR/bin/nbgpt" "$KAYAKO_USB_FINAL" create
+"$TOOL_DIR/bin/nbgpt" "$KAYAKO_USB_FINAL" add -t efi -s 32m
+"$TOOL_DIR/bin/nbgpt" "$KAYAKO_USB_FINAL" add -t ffs -i 2
 
 # 5. Extract offsets safely
 # We use 'nbgpt show' and parse it carefully
-EFI_START=$("$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" show | grep "EFI System" | awk '{print $1}')
-ROOT_START=$("$TOOL_DIR/bin/nbgpt" "$XAO_USB_FINAL" show | grep "NetBSD FFS" | awk '{print $1}')
+EFI_START=$("$TOOL_DIR/bin/nbgpt" "$KAYAKO_USB_FINAL" show | grep "EFI System" | awk '{print $1}')
+ROOT_START=$("$TOOL_DIR/bin/nbgpt" "$KAYAKO_USB_FINAL" show | grep "NetBSD FFS" | awk '{print $1}')
 
 # Check if we actually got numbers back to avoid 'no value specified for seek'
 if [ -z "$EFI_START" ] || [ -z "$ROOT_START" ]; then
@@ -307,8 +307,8 @@ if [ -z "$EFI_START" ] || [ -z "$ROOT_START" ]; then
 fi
 
 echo "--> Writing partitions at offsets: EFI=$EFI_START, ROOT=$ROOT_START"
-dd if="$EFI_IMG" of="$XAO_USB_FINAL" bs=512 seek="$EFI_START" conv=notrunc
-dd if="$ROOT_IMG" of="$XAO_USB_FINAL" bs=512 seek="$ROOT_START" conv=notrunc
+dd if="$EFI_IMG" of="$KAYAKO_USB_FINAL" bs=512 seek="$EFI_START" conv=notrunc
+dd if="$ROOT_IMG" of="$KAYAKO_USB_FINAL" bs=512 seek="$ROOT_START" conv=notrunc
 
-echo "--> $XAO_USB_FINAL"
+echo "--> $KAYAKO_USB_FINAL"
 
