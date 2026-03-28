@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <time.h>
 
 typedef struct {
@@ -37,15 +38,22 @@ static const entry_t db[] = {
 #define COUNT (sizeof(db) / sizeof(entry_t))
 
 void log_action(const char *cmd) {
-    FILE *fp = fopen("/var/log/sysmgr.log", "a");
-    if (fp == NULL) return; // Fail silently if we can't write (e.g. no root)
+    const char *log_path = "/var/log/sysmgr.log";
+    FILE *fp = fopen(log_path, "a");
+    if (fp == NULL) return;
 
     time_t now = time(NULL);
     char *ts = ctime(&now);
-    ts[strlen(ts) - 1] = '\0'; // Remove newline from ctime
+    ts[strlen(ts) - 1] = '\0';
 
     fprintf(fp, "[%s] EXEC: %s\n", ts, cmd);
     fclose(fp);
+
+    /* * Apply the System Append-Only flag.
+     * Note: This will only succeed if sysmgr is running as root
+     * and the system securelevel allows it.
+     */
+    chflags(log_path, SF_APPEND);
 }
 
 void sys_cooked() {
