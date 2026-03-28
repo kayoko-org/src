@@ -1,3 +1,4 @@
+#define _NETBSD_SOURCE
 #define _XOPEN_SOURCE 700
 #define _FILE_OFFSET_BITS 64
 #define _POSIX_C_SOURCE 200809L
@@ -14,6 +15,18 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <util.h>
+#include "ls.h"
+
+int posixly_wrong = 0;
+const char* get_flags_str(unsigned long flags) {
+    if (flags & SF_IMMUTABLE) return "schg";
+    if (flags & UF_IMMUTABLE) return "uchg";
+    if (flags & SF_APPEND)    return "sappnd";
+    if (flags & UF_APPEND)    return "uappnd";
+    return "-";
+}
+
 
 static int flag_a = 0, flag_b = 0, flag_c = 0, flag_d = 0, flag_f = 0;
 static int flag_g = 0, flag_i = 0, flag_k = 0, flag_l = 0, flag_m = 0;
@@ -48,29 +61,6 @@ static int get_terminal_width(void) {
     return 80;
 }
 
-
-void mode_to_str(mode_t mode, char *buf) {
-    strcpy(buf, "----------");
-    if (S_ISDIR(mode)) buf[0] = 'd';
-    else if (S_ISLNK(mode)) buf[0] = 'l';
-    else if (S_ISCHR(mode)) buf[0] = 'c';
-    else if (S_ISBLK(mode)) buf[0] = 'b';
-    else if (S_ISFIFO(mode)) buf[0] = 'p';
-    else if (S_ISSOCK(mode)) buf[0] = 's';
-    if (mode & S_IRUSR) buf[1] = 'r';
-    if (mode & S_IWUSR) buf[2] = 'w';
-    if (mode & S_IXUSR) buf[3] = (mode & S_ISUID) ? 's' : 'x';
-    else if (mode & S_ISUID) buf[3] = 'S';
-    if (mode & S_IRGRP) buf[4] = 'r';
-    if (mode & S_IWGRP) buf[5] = 'w';
-    if (mode & S_IXGRP) buf[6] = (mode & S_ISGID) ? 's' : 'x';
-    else if (mode & S_ISGID) buf[6] = 'S';
-    if (mode & S_IROTH) buf[7] = 'r';
-    if (mode & S_IWOTH) buf[8] = 'w';
-    if (mode & S_IXOTH) buf[9] = (mode & S_ISVTX) ? 't' : 'x';
-    else if (mode & S_ISVTX) buf[9] = 'T';
-}
-
 int compare_entries(const void *a, const void *b) {
     if (flag_f) return 0;
     const file_info *fa = (const file_info *)a;
@@ -103,67 +93,55 @@ void print_name_escaped(const char *name) {
     }
 }
 
-void format_time(time_t t, char *buf, size_t len) {
-    struct tm *tmp = localtime(&t);
-    time_t now = time(NULL);
-
-    /* POSIX rule: If the date is more than 6 months in the past 
-       or any amount in the future, use the Year format. 
-       6 months is defined as 15,768,000 seconds. */
-    if (difftime(now, t) > 15768000 || difftime(now, t) < 0) {
-        strftime(buf, len, "%b %e  %Y", tmp);
-    } else {
-        strftime(buf, len, "%b %e %H:%M", tmp);
-    }
-}
-
-void print_long(file_info *f, int max_nlink, int max_size, int max_user, int max_group, int max_block) {
+void print_long(file_info *f, int max_nlink, int max_size, int max_user, int max_group, int max_block, int max_flags) {
     if (flag_i) printf("%ju ", (uintmax_t)f->st.st_ino);
     if (flag_s) {
         uintmax_t b = (uintmax_t)f->st.st_blocks;
         if (flag_k) b = (b + 1) / 2;
         printf("%*ju ", max_block, b);
     }
+
     char mode[11], time_str[20];
     mode_to_str(f->st.st_mode, mode);
+
     time_t dt = f->st.st_mtime;
     if (flag_c) dt = f->st.st_ctime;
     else if (flag_u) dt = f->st.st_atime;
     format_time(dt, time_str, sizeof(time_str));
+
     printf("%s %*ju ", mode, max_nlink, (uintmax_t)f->st.st_nlink);
-    if (!flag_g) {
-        struct passwd *pw = getpwuid(f->st.st_uid);
-        if (flag_n || !pw) printf("%-*u ", max_user, (unsigned int)f->st.st_uid);
-        else printf("%-*s ", max_user, pw->pw_name);
+
+    struct passwd *pw = getpwuid(f->st.st_uid);
+    if (flag_n || !pw) printf("%-*u ", max_user, (unsigned int)f->st.st_uid);
+    else printf("%-*s ", max_user, pw->pw_name);
+
+    struct group *gr = getgrgid(f->st.st_gid);
+    if (flag_n || !gr) printf("%-*u ", max_group, (unsigned int)f->st.st_gid);
+    else printf("%-*s ", max_group, gr->gr_name);
+
+    /* The "Wrong" Field: Manual mapping for NetBSD flags */
+    if (flag_o && posixly_wrong) {
+        const char *fstr = get_flags_str(f->st.st_flags);
+        printf("%-*s ", max_flags, fstr);
     }
-    if (!flag_o) {
-        struct group *gr = getgrgid(f->st.st_gid);
-        if (flag_n || !gr) printf("%-*u ", max_group, (unsigned int)f->st.st_gid);
-        else printf("%-*s ", max_group, gr->gr_name);
-    }
+
     if (S_ISCHR(f->st.st_mode) || S_ISBLK(f->st.st_mode)) {
         printf("%*u, %*u ", 4, (unsigned int)((f->st.st_rdev >> 8) & 0xff), 4, (unsigned int)(f->st.st_rdev & 0xff));
     } else {
         printf("%*ju ", max_size, (uintmax_t)f->st.st_size);
     }
+
     printf("%s ", time_str);
     print_name_escaped(f->name);
+
     if (f->link_target) printf(" -> %s", f->link_target);
-    if (flag_F || flag_p) {
-        if (S_ISDIR(f->st.st_mode)) putchar('/');
-        else if (flag_F) {
-            if (S_ISLNK(f->st.st_mode)) putchar('@');
-            else if (S_ISFIFO(f->st.st_mode)) putchar('|');
-            else if (S_ISSOCK(f->st.st_mode)) putchar('=');
-            else if (f->st.st_mode & S_IXUSR) putchar('*');
-        }
-    }
     putchar('\n');
 }
 
 void list_dir(const char *path, int need_header, int first);
 
 void process_entries(file_info *entries, size_t count, int is_dir_list) {
+int max_flags = 1;
 if (count == 0) return;
 if (!flag_f) qsort(entries, count, sizeof(file_info), compare_entries);
 
@@ -202,8 +180,11 @@ if (!flag_o) {
 if (flag_l && is_dir_list) printf("total %ld\n", total_blocks);
 
 if (flag_l) {
-for (size_t i = 0; i < count; i++) print_long(&entries[i], max_nlink, max_size, max_user, max_group, max_block);
-} else if (flag_m) {
+for (size_t i = 0; i < count; i++) {
+	print_long(&entries[i], max_nlink, max_size, max_user, max_group, max_block, max_flags);
+    } 
+}
+else if (flag_m) {
 for (size_t i = 0; i < count; i++) {
     if (flag_i) printf("%ju ", (uintmax_t)entries[i].st.st_ino);
     if (flag_s) printf("%ju ", flag_k ? ((uintmax_t)entries[i].st.st_blocks + 1) / 2 : (uintmax_t)entries[i].st.st_blocks);
@@ -338,6 +319,9 @@ void list_dir(const char *path, int need_header, int first) {
 }
 
 int main(int argc, char *argv[]) {
+    if (getenv("POSIXLY_WRONG") != NULL) {
+    posixly_wrong = 1;
+    }
     setlocale(LC_ALL, "");
     int opt;
     progname = argv[0];

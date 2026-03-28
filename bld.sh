@@ -30,7 +30,7 @@ export DESTDIR="$OBJ_DIR/destdir.$ARCH"
 
 REAL_CC="cc"
 export CC="$REAL_CC"
-export LDFLAGS="-static" 
+export LDFLAGS="-static -lutil /usr/lib/libutil.a"  
 export CFLAGS="-I$_INST/include"
 export BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
 export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
@@ -193,7 +193,7 @@ echo "  [CC] login (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
     -o "$XAO_ROOT/sbin/login" \
     src/cmd/adm/login.c \
-    -lcrypt $LDFLAGS
+    -lcrypt $LDFLAGS && chflags schg $XAO_ROOT/sbin/login
 
 
 echo "  [CC] sysmgr (special)"
