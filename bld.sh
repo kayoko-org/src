@@ -30,7 +30,7 @@ export DESTDIR="$OBJ_DIR/destdir.$ARCH"
 
 REAL_CC="cc"
 export CC="$REAL_CC"
-export LDFLAGS="-static -lutil /usr/lib/libutil.a"  
+export LDFLAGS="-static -lutil"  
 export CFLAGS="-I$_INST/include"
 export BUILD_ENV="env -i PATH=$PATH TERM=$TERM HOME=$HOME"
 export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"

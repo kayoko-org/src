@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <login_cap.h>
 
 /* * Manually prototype crypt if not in unistd.h to stop the pointer truncation 
  * that causes the memory fault.
@@ -103,37 +104,62 @@ int main(int argc, char *argv[]) {
         continue;
 
 authenticated:
-        print_splash(user);
+    print_splash(user);
 
-        /* Final safety check: ensure pw is valid before dropping privs */
-        if (!pw) {
-            fprintf(stderr, "Internal error: User vanished.\n");
-            exit(1);
-        }
+    /* 1. Retrieve the login class for this user */
+    login_cap_t *lc = login_getpwclass(pw);
+    if (lc == NULL) {
+        /* Fallback to 'default' class if user's class isn't found */
+        lc = login_getclass("default");
+    }
 
-        if (setgid(pw->pw_gid) != 0 || setuid(pw->pw_uid) != 0) {
-            perror("! ! Failed to drop privileges ! !");
-            exit(1);
-        }
-
-        /* Standardize environment */
-        if (pw->pw_dir) {
-            if (chdir(pw->pw_dir) != 0) {
-                (void)chdir("/");
-            }
-            setenv("HOME", pw->pw_dir, 1);
-        }
-        
-        setenv("USER", pw->pw_name, 1);
-        setenv("LOGNAME", pw->pw_name, 1);
-        setenv("SHELL", "/bin/ksh", 1);
-        setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1);
-
-        /* Standard Unix practice: argv[0] starts with '-' for login shells */
-        execl("/bin/ksh", "-ksh", (char *)NULL);
-        
-        perror("exec failed");
+    /* 2. Apply resource limits (datasize, maxproc, etc.) */
+    if (setusercontext(lc, pw, pw->pw_uid, LOGIN_SETALL) != 0) {
+        perror("setusercontext failed");
         exit(1);
     }
+
+    /* 3. Handle Environment from login.conf */
+    /* If path is defined in login.conf, use it. Otherwise, use your fallback. */
+    const char *path = login_getcapstr(lc, "path", NULL, NULL);
+    if (path) {
+        setenv("PATH", path, 1);
+    } else {
+        setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1);
+    }
+
+    /* Set other basics */
+    setenv("USER", pw->pw_name, 1);
+    setenv("LOGNAME", pw->pw_name, 1);
+    setenv("HOME", pw->pw_dir, 1);
+    setenv("SHELL", pw->pw_shell[0] ? pw->pw_shell : "/bin/ksh", 1);
+
+    /* 4. Cleanup the cap structure */
+    login_close(lc);
+
+    /* 1. Determine the shell: use passwd file, or fallback to ksh */
+    const char *shell_path = (pw->pw_shell && pw->pw_shell[0]) ? pw->pw_shell : "/bin/ksh";
+
+    /* 2. Update the environment so the child process knows its shell */
+    setenv("SHELL", shell_path, 1);
+
+    /* 3. Execute the shell. 
+     * Convention: argv[0] starts with '-' to tell the shell it's a login shell.
+     * We use strrchr to get just the base name (e.g., "ksh" from "/bin/ksh").
+     */
+    char login_argv0[64];
+    const char *shell_name = strrchr(shell_path, '/');
+    shell_name = (shell_name) ? shell_name + 1 : shell_path;
+    
+    snprintf(login_argv0, sizeof(login_argv0), "-%s", shell_name);
+
+    /* Perform the exec */
+    execl(shell_path, login_argv0, (char *)NULL);
+
+    /* If execl returns, it failed */
+    perror("exec failed");
+    exit(1);
+
     return 0;
+	}
 }
