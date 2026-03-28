@@ -53,6 +53,40 @@ local dirs = {"/bin", "/sbin", "/lib", "/etc", "/usr/bin", "/usr/lib"}
 for _, d in ipairs(dirs) do sh("mkdir -p " .. cfg.root .. d) end
 sh("ln -sf ../lib " .. cfg.root .. "/usr/lib")
 
+-- --- Branding Stage ---
+local function apply_branding()
+    print("\27[1m==> Applying Kayoko Branding to Kernel\27[0m")
+    
+    local vers_script = cfg.src .. "/sys/conf/newvers.sh"
+    local f = io.open(vers_script, "r")
+    if not f then
+        print("\27[31m[!] Error: Could not find newvers.sh at " .. vers_script .. "\27[0m")
+        return
+    end
+
+    local content = f:read("*all")
+    f:close()
+
+    -- Swap NetBSD for Kayoko in the ostype variable
+    -- We use a pattern that matches the standard assignment
+    local new_content, count = content:gsub('ost="NetBSD"', 'ost="Kayoko"')
+    
+    if count > 0 then
+        local wf = io.open(vers_script, "w")
+        wf:write(new_content)
+        wf:close()
+        print("  [Branding] Successfully changed ostype to 'Kayoko'")
+    else
+        print("  [Branding] Kernel already branded or pattern not found.")
+    end
+
+    -- Optional: Touch a marker file so we don't keep checking if you prefer
+    sh("touch " .. cfg.src .. "/.kayoko_branded")
+end
+
+-- Call it before building the kernel
+apply_branding()
+
 -- --- 4. Stage: Toolchain ---
 if not io.open(cfg.nbmake, "r") then
     print("\27[1m=== Building NetBSD Toolchain (This takes a while) ===\27[0m")
