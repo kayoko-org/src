@@ -1,0 +1,27 @@
+# ==========================================================
+# openXao Kernel Access Table (KAT) Configuration
+# Format: <user|%group>:<binary_path>:<privileges>
+# ==========================================================
+
+# 1. THE "ADMIN" ROLE
+# Give all members of the 'wheel' group full VFS bypass globally.
+# Leaving the path empty (::) applies the rule to any process they run.
+%wheel::VFS_WRITE|VFS_READ|VFS_RETAIN
+
+# 2. THE "NETWORK" ROLE
+# Allow the 'operators' group to bind to privileged ports (<1024) 
+# and modify the system clock/NTP.
+%operators::NET_BIND|SYS_TIME
+
+# 3. SPECIFIC APPLICATION HARDENING
+# Allow the 'www' user ONLY the privilege to bind ports, 
+# and only when running the specific web server binary.
+www:/usr/local/libexec/httpd:NET_BIND
+
+# 4. DEVELOPER SANDBOX
+# Give 'lars' high-level system privileges for kernel work.
+lars::SYS_MODULE|DEV_RAWIO|SYS_CHROOT
+
+# 5. LEGACY / MANUAL OVERRIDES
+# You can still use raw UIDs and hex/decimal masks if needed.
+1001::0x40000000
