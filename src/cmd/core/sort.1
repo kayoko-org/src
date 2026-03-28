@@ -6,7 +6,9 @@
 .Nd sort, merge, or sequence check text files
 .Sh SYNOPSIS
 .Nm
-.Op Fl u
+.Op Fl cmu
+.Op Fl o Ar output
+.Op Fl nr
 .Op Ar file ...
 .Sh DESCRIPTION
 The
@@ -23,23 +25,60 @@ operand is
 .Pq Ql - ,
 the standard input is read.
 .Pp
-The following option is supported:
+The following options are supported:
 .Bl -tag -width indent
+.It Fl c
+Check that the single input file is ordered. If the file is out of sequence,
+.Nm
+writes no output and exits with a non-zero status.
+.It Fl m
+Merge only; the input files are assumed to be already sorted.
+.It Fl n
+Restrict the sort key to an initial numeric string.
+.It Fl o Ar output
+Specify the name of an
+.Ar output
+file to be used instead of the standard output. This file can be the same
+as one of the input
+.Ar files .
+.It Fl r
+Reverse the sense of comparisons.
 .It Fl u
 Unique: suppress all but one in each set of lines having equal keys.
-If used with sequence checking, verify that the input file contains no
-adjacent duplicate lines.
+If used with
+.Fl c ,
+verify that the input contains no adjacent duplicate lines.
 .El
 .Sh EXIT STATUS
-.Ex -std
+The following exit values are returned:
+.Bl -tag -width indent
+.It 0
+All input files were output successfully, or
+.Fl c
+was specified and the input file was correctly sorted.
+.It 1
+Under the
+.Fl c
+option, the file was not ordered as specified, or if
+.Fl c
+and
+.Fl u
+were specified, two adjacent lines were identical.
+.It >1
+An error occurred.
+.El
 .Sh EXAMPLES
-Sort a list of names alphabetically:
+Sort a list of numbers in reverse order:
 .Pp
-.Dl $ sort names.txt
+.Dl $ sort -nr numbers.txt
 .Pp
-Sort standard input and remove duplicates:
+Check if a file is already sorted:
 .Pp
-.Dl $ echo "apple\napple\norange" | sort -u
+.Dl $ sort -c names.txt || echo "File is unsorted"
+.Pp
+Merge two sorted files into a third:
+.Pp
+.Dl $ sort -m -o total.txt file1.txt file2.txt
 .Sh SEE ALSO
 .Xr comm 1 ,
 .Xr join 1 ,
