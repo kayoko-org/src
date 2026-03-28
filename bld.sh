@@ -223,10 +223,10 @@ mkdir -p "$XAO_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$XAO_ROOT"/usr/bin
 
 
 cat <<'EOF' > "$XAO_ROOT"/etc/os-release
-NAME="Xao"
+NAME="openxao"
 VERSION="7.3"
 ID=xao
-PRETTY_NAME="Xao"
+PRETTY_NAME="openXao"
 VERSION_ID="7.3"
 XAO_SERVICE_PACK="7300-03-02-2546"
 XAO_RECOMMENDED_LEVEL="7300-03-00-0000"
