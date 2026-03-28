@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <login_cap.h>
+#include <ttyent.h>
 
 /* * Manually prototype crypt if not in unistd.h to stop the pointer truncation 
  * that causes the memory fault.
@@ -47,26 +48,31 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Nesting prohibited.\n");
     exit(1);
     }
-
-	if (argc > 1 && strcmp(argv[1], "-a") == 0) {
 	    char *tty = ttyname(STDIN_FILENO);
+	    struct ttyent *ty;
 	
-	    /* * Restrict autologin to the physical console or specific VTYs.
-	     * Adjust "tty0" or "console" to match your kernel's naming convention.
-	     */
-	    if (tty && (strcmp(tty, "/dev/console") == 0 || strcmp(tty, "/dev/tty00") == 0 || strcmp(tty, "/dev/tty0") == 0 || strcmp(tty, "/dev/ttyE1") == 0 || strcmp(tty, "/dev/tty") == 0 || strcmp(tty, "/dev/vty0") == 0)) {
-	        unauth_mode = 1;
+	    if (tty) {
+	        // Strip the "/dev/" prefix if present for getttynam
+	        char *tty_short = (strncmp(tty, "/dev/", 5) == 0) ? tty + 5 : tty;
+	        ty = getttynam(tty_short);
+
+	        // Check if the terminal exists in /etc/ttys and has the "secure" flag
+	        if (ty && (ty->ty_status & TTY_SECURE)) {
+	            unauth_mode = 1;
+	        } else {
+	            fprintf(stderr, "%s is not a secure terminal.\n", tty);
+	            exit(1);
+	        }
 	    } else {
-	        fprintf(stderr, "Autologin refused on insecure terminal: %s\n", tty ? tty : "unknown");
+	        fprintf(stderr, "Could not determine TTY.\n");
 	        exit(1);
 	    }
-	}
     while (1) {
         struct termios t;
 	char prompt[64]; /* Buffer for the dynamic password prompt */
         tcgetattr(STDIN_FILENO, &t);
         t.c_lflag |= ECHO; 
-        tcsetattr(STDIN_FILENO, TCSANOW, &t);
+tcsetattr(STDIN_FILENO, TCSANOW, &t);
 
         printf("Console login: ");
 	if (scanf("%31s", user) <= 0) {
