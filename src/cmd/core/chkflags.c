@@ -38,12 +38,19 @@ int main(int argc, char *argv[]) {
     struct stat st;
     int opt, v_flag = 0;
 
+
     while ((opt = getopt(argc, argv, "v")) != -1) {
         if (opt == 'v') v_flag = 1;
         else {
             fprintf(stderr, "usage: %s [-v] [file ...]\n", argv[0]);
             return 1;
         }
+    }
+
+    /* Check if no files were provided */
+    if (optind >= argc) {
+        fprintf(stderr, "usage: %s [-v] [file ...]\n", argv[0]);
+        exit(2);
     }
 
     for (int i = optind; i < argc; i++) {
