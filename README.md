@@ -1,16 +1,16 @@
-openKorzh (ВідкритийКорж)
+openKayako
 ======
 
-openKorzh is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
+openKayako is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
 
 Binaries
 --------
-- [Releases](https://cdn.openkorzh.net/releases/latest)
+- [Releases](https://cdn.openKayako.net/releases/latest)
 
 Testing
 -------
 
-On a running openKorzh system:
+On a running openKayako system:
 
     make -C /usr/tests [posix|sus|legal] 
 
@@ -20,8 +20,8 @@ Legal
 
 LICENSE GRANT
 -------------
-The openKorzh Project ("Licensor") grants to the person or entity ("Licensee") 
-a non-exclusive, non-transferable sublicense to use the openKorzh 
+The openKayako Project ("Licensor") grants to the person or entity ("Licensee") 
+a non-exclusive, non-transferable sublicense to use the openKayako 
 Operating System and associated utilities (the "Software") solely on 
 a single Designated Central Processing Unit (CPU) owned or leased 
 by Licensee.
@@ -30,7 +30,7 @@ by Licensee.
 PROPRIETARY
 -----------
 Licensee acknowledges that the Software, including but not limited 
-to the source code for 'srcmstr', 'sysmgr', and the 'Xao' kernel, 
+to the source code for 'srcmstr', 'sysmgr', and the 'Kayako' kernel, 
 is the confidential and proprietary property and a trade secret of 
 Licensor. Licensee shall:
    (a) Not disclose the Source Code to any third party;
