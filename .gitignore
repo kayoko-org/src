@@ -7,6 +7,6 @@ src/kat/kat.kmod
 src/kat/kat.kmod.map
 src/kat/katadm
 src/kat/kmod.o
-src/kat/machine
-src/kat/x86
-src/kat/xen
+src/kat/machine/
+src/kat/x86/
+src/kat/xen/
