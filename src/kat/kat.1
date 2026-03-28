@@ -1,0 +1,37 @@
+.Dd March 28, 2026
+.Dt KAT 1
+.Os openXao
+.Sh NAME
+.Nm kat
+.Nd execute a command with Kernel Access Table privileges
+.Sh SYNOPSIS
+.Nm
+.Ar command
+.Op Ar args ...
+.Sh DESCRIPTION
+The
+.Nm
+utility executes the specified
+.Ar command
+with elevated privileges as defined in the Kernel Access Table (KAT).
+Unlike sudo,
+.Nm
+does not necessarily grant full root access; it requests the kernel to 
+apply specific privileges (e.g., system time adjustment) to the process 
+based on the user's UID and the binary's path.
+.Pp
+The
+.Nm
+utility is a SetUID binary. It relies on the
+.Nm kat.kmod
+module being loaded and configured via
+.Xr katadm 8 .
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Execute touch with the ability to modify root owned files:
+.Pp
+.Dl $ kat touch /test_file
+.Sh SEE ALSO
+.Xr katadm 8 ,
+.Xr kauth 9

@@ -1,0 +1,36 @@
+.Dd March 28, 2026
+.Dt KAT 4
+.Os openXao
+.Sh NAME
+.Nm kat
+.Nd Kernel Access Table driver
+.Sh DESCRIPTION
+The
+.Nm
+driver provides an interface to the Kernel Access Table (KAT) RBAC system. 
+It uses the
+.Xr kauth 9
+framework to intercept privileged system actions and validate them 
+against a user-defined table of rules.
+.Pp
+The driver exposes a character device at
+.Pa /dev/kat
+which supports several
+.Xr ioctl 2
+calls used by
+.Xr katadm 8
+to manage the access table.
+.Sh PRIVILEGES
+The following privilege bits are currently supported:
+.Bl -tag -width "KAT_PRIV_SYS_TIME"
+.It Dv 1 (KAT_PRIV_NET_BIND)
+Allow binding to privileged ports (< 1024).
+.It Dv 2 (KAT_PRIV_SYS_TIME)
+Allow modification of the system clock.
+.El
+.Sh FILES
+.Pa /dev/kat
+.Sh SEE ALSO
+.Xr kat 1 ,
+.Xr katadm 8 ,
+.Xr kauth 9

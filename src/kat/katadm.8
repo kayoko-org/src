@@ -1,0 +1,35 @@
+.Dd March 28, 2026
+.Dt KATADM 8
+.Os openXao
+.Sh NAME
+.Nm katadm
+.Nd administrative tool for the Kernel Access Table
+.Sh SYNOPSIS
+.Nm
+.Cm load | clear | status
+.Sh DESCRIPTION
+The
+.Nm
+utility manages the rules within the KAT kernel module. 
+Rules are typically read from
+.Pa /etc/kat.conf .
+.Bl -tag -width indent
+.It Cm load
+Parses
+.Pa /etc/kat.conf
+and uploads rules to the kernel via
+.Pa /dev/kat .
+.It Cm clear
+Flushes all rules from the kernel's in-memory table.
+.It Cm status
+Displays the number of active rules currently enforced by the kernel.
+.El
+.Sh FILES
+.Bl -tag -width "/etc/kat.conf" -compact
+.It Pa /etc/kat.conf
+The default configuration file. Format is
+.Li uid:path:privmask .
+.El
+.Sh SEE ALSO
+.Xr kat 1 ,
+.Xr kat 4
