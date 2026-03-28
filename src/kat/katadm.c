@@ -36,7 +36,7 @@ static struct {
 };
 
 void usage(const char *progname) {
-    fprintf(stderr, "Kayako Kernel Access Table (KAT) Admin\n");
+    fprintf(stderr, "Kayoko Kernel Access Table (KAT) Admin\n");
     fprintf(stderr, "Usage: %s <load | clear | status | list>\n", progname);
     exit(EXIT_FAILURE);
 }

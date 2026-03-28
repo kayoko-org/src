@@ -1,5 +1,5 @@
 # ==========================================================
-# Kayako Kernel Access Table (KAT) Configuration
+# Kayoko Kernel Access Table (KAT) Configuration
 # Format: <user|%group>:<binary_path>:<privileges>
 # ==========================================================
 

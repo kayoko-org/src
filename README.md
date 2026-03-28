@@ -1,16 +1,16 @@
-openKayako
+openKayoko
 ======
 
-openKayako is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
+openKayoko is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
 
 Binaries
 --------
-- [Releases](https://cdn.openKayako.net/releases/latest)
+- [Releases](https://cdn.openKayoko.net/releases/latest)
 
 Testing
 -------
 
-On a running openKayako system:
+On a running openKayoko system:
 
     make -C /usr/tests [posix|sus|legal] 
 
@@ -20,8 +20,8 @@ Legal
 
 LICENSE GRANT
 -------------
-The openKayako Project ("Licensor") grants to the person or entity ("Licensee") 
-a non-exclusive, non-transferable sublicense to use the openKayako 
+The openKayoko Project ("Licensor") grants to the person or entity ("Licensee") 
+a non-exclusive, non-transferable sublicense to use the openKayoko 
 Operating System and associated utilities (the "Software") solely on 
 a single Designated Central Processing Unit (CPU) owned or leased 
 by Licensee.
@@ -30,7 +30,7 @@ by Licensee.
 PROPRIETARY
 -----------
 Licensee acknowledges that the Software, including but not limited 
-to the source code for 'srcmstr', 'sysmgr', and the 'Kayako' kernel, 
+to the source code for 'srcmstr', 'sysmgr', and the 'Kayoko' kernel, 
 is the confidential and proprietary property and a trade secret of 
 Licensor. Licensee shall:
    (a) Not disclose the Source Code to any third party;
