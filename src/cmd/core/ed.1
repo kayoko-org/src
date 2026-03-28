@@ -1,0 +1,109 @@
+.Dd March 28, 2026
+.Dt ED 1
+.Os Xao
+.Sh NAME
+.Nm ed
+.Nd the standard line-oriented text editor
+.Sh SYNOPSIS
+.Nm
+.Op Fl p Ar prompt
+.Op Ar file
+.Sh DESCRIPTION
+The
+.Nm
+utility is a line-oriented text editor. It operates in two modes:
+.Em command mode
+and
+.Em input mode .
+In command mode,
+.Nm
+reads commands from standard input and executes them to manipulate the contents
+of a buffer. When in input mode,
+.Nm
+appends text to the buffer.
+.Pp
+If a
+.Ar file
+argument is given,
+.Nm
+simulates an
+.Ic e
+command on the file before reading commands from standard input.
+.Sh ADDRESSING
+Commands operate on zero, one, or two addresses. A address represents a line
+number in the buffer.
+.Bl -tag -width ".Ar addr1 , addr2"
+.It Li .
+The current line (dot).
+.It Li $
+The last line in the buffer.
+.It Li n
+The n-th line in the buffer.
+.It Li 'x
+The line marked with the character
+.Ar x
+via the
+.Ic k
+command.
+.It Li +n , -n
+Relative offset of
+.Ar n
+lines from the preceding address.
+.It Li ,
+Equivalent to
+.Li 1,$ .
+.It Li ;
+Equivalent to
+.Li .,$ ,
+but sets dot to the first address before calculating the second.
+.El
+.Sh COMMANDS
+.Nm
+supports the following commands:
+.Bl -tag -width indent
+.It (addr) Ic a
+Append text after the addressed line. Input is terminated by a single
+period on a line.
+.It (addr1,addr2) Ic d
+Delete the addressed lines. Dot is set to the line following the deleted range.
+.It Ic h
+Print the last error message.
+.It Ic H
+Toggle the automatic printing of error messages.
+.It (addr1,addr2) Ic j
+Join the addressed lines into a single line.
+.It (addr) Ic k Ar x
+Mark the addressed line with the character
+.Ar x .
+.It (addr1,addr2) Ic n
+Print the addressed lines prefixed by their line numbers and a tab.
+.It (addr1,addr2) Ic p
+Print the addressed lines.
+.It Ic P
+Toggle the command prompt character.
+.It Ic q
+Quit
+.Nm .
+If the buffer has been modified since the last write, a warning is issued.
+.It (addr1,addr2) Ic s/re/replacement/g
+Substitute
+.Ar replacement
+for the regular expression
+.Ar re
+in the addressed lines.
+.It (addr1,addr2) Ic w Op Ar file
+Write the addressed lines to
+.Ar file .
+.El
+.Sh ERRORS
+When an error occurs,
+.Nm
+prints a
+.Ql ?
+and returns to command mode. The
+.Ic h
+command can be used to view the specific error.
+.Sh SEE ALSO
+.Xr cat 1 ,
+.Xr vi 1 ,
+.Xr regex 7
