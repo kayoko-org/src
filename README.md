@@ -1,7 +1,7 @@
-openXao
+openXào
 ======
 
-openXao is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
+openXào is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
 
 Binaries
 --------
@@ -10,7 +10,7 @@ Binaries
 Testing
 -------
 
-On a running openXao system:
+On a running openXào system:
 
     make -C /usr/tests [posix|sus|legal] 
 
@@ -20,8 +20,8 @@ Legal
 
 LICENSE GRANT
 -------------
-The openXao Project ("Licensor") grants to the person or entity ("Licensee") 
-a non-exclusive, non-transferable sublicense to use the openXao 
+The openXào Project ("Licensor") grants to the person or entity ("Licensee") 
+a non-exclusive, non-transferable sublicense to use the openXào 
 Operating System and associated utilities (the "Software") solely on 
 a single Designated Central Processing Unit (CPU) owned or leased 
 by Licensee.
