@@ -4,117 +4,148 @@
 #include <sys/conf.h>
 #include <sys/systm.h>
 #include <sys/ioccom.h>
-#include <sys/kmem.h>
-#include <sys/proc.h>
+#include <sys/syslog.h>
+#include <sys/mutex.h>
 #include <sys/vnode.h>
-#include <sys/namei.h>
+#include <sys/kmem.h>
 
 #include "kat.h"
 
 /* --- Globals --- */
-static kauth_listener_t kat_listener;
 static struct kat_rule kat_table[KAT_MAX_RULES];
 static int kat_rule_count = 0;
 static kmutex_t kat_mtx;
 
-/* --- Prototypes --- */
+/* Listener handles for unregistration */
+static kauth_listener_t kat_sys_lnr;
+static kauth_listener_t kat_vfs_lnr;
+static kauth_listener_t kat_net_lnr;
+static kauth_listener_t kat_prc_lnr;
+
+/* --- Helpers --- */
+
+static void
+kat_log(uid_t uid, const char *scope, uint64_t priv, int result)
+{
+    log(LOG_AUTHPRIV | LOG_NOTICE, 
+        "KAT: [UID %d] Scope: %s, Priv: 0x%llx -> %s\n",
+        uid, scope, (unsigned long long)priv, 
+        (result == KAUTH_RESULT_ALLOW) ? "ALLOWED" : "DEFERRED");
+}
+
+static int
+kat_check(uid_t uid, uint64_t required_priv)
+{
+    int res = KAUTH_RESULT_DEFER;
+    mutex_enter(&kat_mtx);
+    for (int i = 0; i < kat_rule_count; i++) {
+        if (kat_table[i].uid == uid && (kat_table[i].privileges & required_priv)) {
+            res = KAUTH_RESULT_ALLOW;
+            break;
+        }
+    }
+    mutex_exit(&kat_mtx);
+    return res;
+}
+
+/* --- Scope Callbacks --- */
+
+static int
+kat_sys_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
+    void *arg0, void *arg1, void *arg2, void *arg3)
+{
+    uint64_t priv = 0;
+    switch (action) {
+        case KAUTH_SYSTEM_TIME:   priv = KAT_PRIV_SYS_TIME; break;
+        case KAUTH_SYSTEM_MODULE: priv = KAT_PRIV_SYS_MODULE; break;
+        case KAUTH_SYSTEM_REBOOT: priv = KAT_PRIV_SYS_REBOOT; break;
+    }
+
+    if (priv == 0) return KAUTH_RESULT_DEFER;
+    
+    int res = kat_check(kauth_cred_getuid(cred), priv);
+    if (res == KAUTH_RESULT_ALLOW) kat_log(kauth_cred_getuid(cred), "SYSTEM", priv, res);
+    return res;
+}
+
+static int
+kat_vfs_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
+    void *arg0, void *arg1, void *arg2, void *arg3)
+{
+    uint64_t priv = 0;
+
+    /* In NetBSD, file creation and writing fall under KAUTH_VNODE_* */
+    if (action == KAUTH_VNODE_WRITE_DATA || action == KAUTH_VNODE_APPEND_DATA)
+        priv = KAT_PRIV_VFS_WRITE;
+    else if (action == KAUTH_VNODE_READ_DATA)
+        priv = KAT_PRIV_VFS_READ;
+
+    if (priv == 0) return KAUTH_RESULT_DEFER;
+
+    int res = kat_check(kauth_cred_getuid(cred), priv);
+    if (res == KAUTH_RESULT_ALLOW) 
+        kat_log(kauth_cred_getuid(cred), "VNODE", priv, res);
+    
+    return res;
+}
+
+static int
+kat_net_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
+    void *arg0, void *arg1, void *arg2, void *arg3)
+{
+    if (action == KAUTH_NETWORK_BIND) {
+        int res = kat_check(kauth_cred_getuid(cred), KAT_PRIV_NET_BIND);
+        if (res == KAUTH_RESULT_ALLOW) kat_log(kauth_cred_getuid(cred), "NET", KAT_PRIV_NET_BIND, res);
+        return res;
+    }
+    return KAUTH_RESULT_DEFER;
+}
+
+/* --- Devsw Logic --- */
+
 dev_type_open(katopen);
 dev_type_close(katclose);
 dev_type_ioctl(katioctl);
 
 const struct cdevsw kat_cdevsw = {
-    .d_open = katopen,
-    .d_close = katclose,
-    .d_read = noread,
-    .d_write = nowrite,
-    .d_ioctl = katioctl,
-    .d_stop = nostop,
-    .d_tty = notty,
-    .d_poll = nopoll,
-    .d_mmap = nommap,
-    .d_kqfilter = nokqfilter,
-    .d_discard = nodiscard,
-    .d_flag = D_OTHER
+    .d_open = katopen, .d_close = katclose,
+    .d_read = noread, .d_write = nowrite,
+    .d_ioctl = katioctl, .d_stop = nostop,
+    .d_tty = notty, .d_poll = nopoll,
+    .d_mmap = nommap, .d_kqfilter = nokqfilter,
+    .d_discard = nodiscard, .d_flag = D_OTHER
 };
 
-/* --- Character Device Logic --- */
-
-int
-katopen(dev_t dev, int flags, int fmt, struct lwp *l)
-{
-    return 0;
-}
-
-int
-katclose(dev_t dev, int flags, int fmt, struct lwp *l)
-{
-    return 0;
-}
+int katopen(dev_t dev, int flags, int fmt, struct lwp *l) { return 0; }
+int katclose(dev_t dev, int flags, int fmt, struct lwp *l) { return 0; }
 
 int
 katioctl(dev_t dev, u_long cmd, void *data, int flag, struct lwp *l)
 {
     int error = 0;
-
-    mutex_enter(&kat_mtx);
     switch (cmd) {
     case KATIOC_ADD_RULE:
-        if (kat_rule_count >= KAT_MAX_RULES) {
-            error = ENOMEM;
-            break;
+        if (kauth_authorize_system(l->l_cred, KAUTH_SYSTEM_MODULE, 0, NULL, NULL, NULL) != 0)
+            return EPERM;
+        mutex_enter(&kat_mtx);
+        if (kat_rule_count < KAT_MAX_RULES) {
+            memcpy(&kat_table[kat_rule_count++], data, sizeof(struct kat_rule));
+        } else {
+            error = ENOSPC;
         }
-        memcpy(&kat_table[kat_rule_count], data, sizeof(struct kat_rule));
-        printf("KAT: Added rule for UID %d, path: %s\n", 
-               kat_table[kat_rule_count].uid, kat_table[kat_rule_count].path);
-        kat_rule_count++;
+        mutex_exit(&kat_mtx);
         break;
-
     case KATIOC_CLEAR_RULES:
+        mutex_enter(&kat_mtx);
         kat_rule_count = 0;
-        printf("KAT: Access table cleared.\n");
+        mutex_exit(&kat_mtx);
         break;
-
-    case KATIOC_GET_COUNT:
-        *(int *)data = kat_rule_count;
-        break;
-
-    default:
-        error = ENOTTY;
-        break;
+    default: error = ENOTTY;
     }
-    mutex_exit(&kat_mtx);
-
     return error;
 }
 
-/* --- Kauth Listener --- */
-
-static int
-kat_scope_system_cb(kauth_cred_t cred, kauth_action_t action,
-    void *cookie, void *arg0, void *arg1, void *arg2, void *arg3)
-{
-    uid_t uid = kauth_cred_getuid(cred);
-    int result = KAUTH_RESULT_DEFER;
-
-    /* * Example: If a user tries to change the time, 
-     * check if their UID has KAT_PRIV_SYS_TIME in our table.
-     */
-    if (action == KAUTH_SYSTEM_TIME) {
-        mutex_enter(&kat_mtx);
-        for (int i = 0; i < kat_rule_count; i++) {
-            if (kat_table[i].uid == uid && 
-               (kat_table[i].privileges & KAT_PRIV_SYS_TIME)) {
-                result = KAUTH_RESULT_ALLOW;
-                break;
-            }
-        }
-        mutex_exit(&kat_mtx);
-    }
-
-    return result;
-}
-
-/* --- Module Glue --- */
+/* --- Module Lifecycle --- */
 
 MODULE(MODULE_CLASS_MISC, kat, NULL);
 
@@ -126,25 +157,23 @@ kat_modcmd(modcmd_t cmd, void *arg)
     switch (cmd) {
     case MODULE_CMD_INIT:
         mutex_init(&kat_mtx, MUTEX_DEFAULT, IPL_NONE);
-        
-        if (devsw_attach("kat", NULL, &bmajor, &kat_cdevsw, &cmajor)) {
-            mutex_destroy(&kat_mtx);
+        if (devsw_attach(KAT_DEV_NAME, NULL, &bmajor, &kat_cdevsw, &cmajor))
             return ENXIO;
-        }
 
-        kat_listener = kauth_listen_scope(KAUTH_SCOPE_SYSTEM,
-            kat_scope_system_cb, NULL);
-        
-        printf("KAT: Kernel Access Table Loaded (major is %d)\n", cmajor);
+        kat_sys_lnr = kauth_listen_scope(KAUTH_SCOPE_SYSTEM, kat_sys_cb, NULL);
+        kat_vfs_lnr = kauth_listen_scope(KAUTH_SCOPE_VNODE, kat_vfs_cb, NULL);
+        kat_net_lnr = kauth_listen_scope(KAUTH_SCOPE_NETWORK, kat_net_cb, NULL);
+
+        printf("Kernel Authorization Table (KAT RBAC) initialized... %d\n", cmajor);
         return 0;
 
     case MODULE_CMD_FINI:
-        kauth_unlisten_scope(kat_listener);
+        kauth_unlisten_scope(kat_sys_lnr);
+        kauth_unlisten_scope(kat_vfs_lnr);
+        kauth_unlisten_scope(kat_net_lnr);
         devsw_detach(NULL, &kat_cdevsw);
         mutex_destroy(&kat_mtx);
         return 0;
-
-    default:
-        return ENOTTY;
+    default: return ENOTTY;
     }
 }
