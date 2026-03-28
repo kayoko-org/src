@@ -21,6 +21,8 @@ www:/usr/local/libexec/httpd:NET_BIND
 # 4. DEVELOPER SANDBOX
 # Give 'lars' high-level system privileges for kernel work.
 lars::SYS_MODULE|DEV_RAWIO|SYS_CHROOT
+dummy::!NET_RAW
+root::!NET_RAW
 
 # 5. LEGACY / MANUAL OVERRIDES
 # You can still use raw UIDs and hex/decimal masks if needed.

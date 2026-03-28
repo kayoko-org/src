@@ -39,21 +39,25 @@ kat_check(uid_t uid, uint64_t required_priv, const char *current_path)
     int allowed = 0;
 
     mutex_enter(&kat_mtx);
+    
+    /* If the table is empty, we have no opinion. DEFER. */
+    if (kat_rule_count == 0) {
+        mutex_exit(&kat_mtx);
+        return KAUTH_RESULT_DEFER;
+    }
+
     for (int i = 0; i < kat_rule_count; i++) {
         if (!kat_table[i].active || kat_table[i].uid != uid)
             continue;
 
-        /* Check if the privilege bit matches */
         if (kat_table[i].privileges & required_priv) {
-            
-            /* Path validation (Global or Match) */
-            if (kat_table[i].path[0] == '\0' || 
+            if (kat_table[i].path[0] == '\0' ||
                (current_path && strcmp(kat_table[i].path, current_path) == 0)) {
-                
-                /* EXPLICIT RESTRICTION: Immediate exit with DEFER/DENY */
+
+                /* 1. EXPLICIT RESTRICTION: The ONLY way to get a DENY. */
                 if (kat_table[i].type == KAT_TYPE_RESTRICT) {
                     mutex_exit(&kat_mtx);
-                    return KAUTH_RESULT_DENY; 
+                    return KAUTH_RESULT_DENY;
                 }
 
                 if (kat_table[i].type == KAT_TYPE_ALLOW) {
@@ -64,7 +68,11 @@ kat_check(uid_t uid, uint64_t required_priv, const char *current_path)
     }
     mutex_exit(&kat_mtx);
 
-    return (allowed) ? KAUTH_RESULT_ALLOW : KAUTH_RESULT_DENY;
+    /* 2. FALLBACK: 
+     * If we found an ALLOW, great. 
+     * If we found NOTHING, we DEFER so the system doesn't crash. 
+     */
+    return (allowed) ? KAUTH_RESULT_ALLOW : KAUTH_RESULT_DEFER;
 }
 
 /* --- Scope Callbacks --- */
@@ -115,7 +123,7 @@ kat_vfs_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
         return KAUTH_RESULT_ALLOW;
     }
 
-    return KAUTH_RESULT_DEFER;
+	return kat_check(uid, priv, path);
 }
 
 static int
@@ -136,8 +144,8 @@ kat_net_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
     // Use curproc->p_path here for the check
     int res = kat_check(uid, priv, p ? p->p_path : NULL);
     if (res == KAUTH_RESULT_ALLOW) return KAUTH_RESULT_ALLOW;
+	return kat_check(uid, priv, p ? p->p_path : NULL);
 
-    return KAUTH_RESULT_DEFER;
 }
 
 /* --- Devsw Logic --- */
