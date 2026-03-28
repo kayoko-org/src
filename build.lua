@@ -89,7 +89,7 @@ apply_branding()
 
 -- --- 4. Stage: Toolchain ---
 if not io.open(cfg.nbmake, "r") then
-    print("\27[1m=== Building NetBSD Toolchain (This takes a while) ===\27[0m")
+    print("\27[1m==> Building NetBSD Toolchain (This takes a while)\27[0m")
     sh(string.format("cd %s && env -i PATH=/usr/bin:/bin TERM=$TERM HOME=$HOME ./build.sh -m %s -T %s -O %s -u tools", 
         cfg.src, cfg.arch, cfg.tools, cfg.obj))
 end
@@ -116,7 +116,7 @@ build_nbsd_component("lib/libc")
 sh(string.format("cp -P %s/lib/libc.s* %s/lib/", cfg.destdir, cfg.root))
 
 -- --- 6. Stage: Kayoko Custom Utilities ---
-print("\27[1m=== Building Kayoko Core & Admin Utils ===\27[0m")
+print("\27[1m==> Building Kayoko Core & Admin Utils\27[0m")
 
 local function compile_util(src, bin, extra_ld)
     if needs_update(src, bin) then
@@ -141,7 +141,7 @@ compile_util("src/cmd/adm/sysmgr.c", cfg.root .. "/sbin/sysmgr", "-lcurses -lter
 compile_util("src/cmd/adm/lsdsk.c",  cfg.root .. "/bin/lsdsk", "-lprop")
 
 -- --- Library Sync Stage ---
-print("\27[1m=== Syncing Libraries to Kayoko Root ===\27[0m")
+print("\27[1m==> Syncing Libraries to Kayoko Root\27[0m")
 
 local function sync_lib(name)
     print("  [Sync] " .. name)
