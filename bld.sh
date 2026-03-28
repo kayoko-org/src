@@ -53,7 +53,7 @@ if [ ! -d "$NBSD_SRC/.git" ]; then
     echo "--> Cloning openXao gate..."
     git clone --depth 1 https://github.com/openXao/gate.git "$NBSD_SRC"
 fi
-# --- 2. Xai Branding ---
+# --- 2. Xao Branding ---
 # --- 1. Build the "Tools" ---
 if [ ! -x "$NBMAKE" ]; then
     echo "--> Tools missing. Building NetBSD Toolchain..."
@@ -116,7 +116,7 @@ echo "--> Syncing Headers to XAO_ROOT..."
 # --- 3.5 Build the Kernel ---
 # Note: We use the custom "XAO" config name here
 if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/XAO/netbsd" ]; then
-    echo "--> Building Custom Xai Kernel..."
+    echo "--> Building Custom Xao Kernel..."
     # If you haven't created a 'XAO' config file yet, we'll use GENERIC as a base
     if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/XAO" ]; then
         cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/XAO"
@@ -143,7 +143,7 @@ ln -sf ksh "$XAO_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
-# --- 4. Build Xai Core Utilities ---
+# --- 4. Build Xao Core Utilities ---
 echo "--> Building Xao Core Utilities..."
 for src_file in src/cmd/core/*.c; do
     # 1. Strip the directory path and extension
@@ -223,10 +223,10 @@ mkdir -p "$XAO_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$XAO_ROOT"/usr/bin
 
 
 cat <<'EOF' > "$XAO_ROOT"/etc/os-release
-NAME="Xai"
+NAME="Xao"
 VERSION="7.3"
 ID=xao
-PRETTY_NAME="Xai 7.3 (bos73F)"
+PRETTY_NAME="Xao"
 VERSION_ID="7.3"
 XAO_SERVICE_PACK="7300-03-02-2546"
 XAO_RECOMMENDED_LEVEL="7300-03-00-0000"
