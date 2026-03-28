@@ -47,10 +47,19 @@ int main(int argc, char *argv[]) {
     exit(1);
     }
 
-    if (argc > 1 && strcmp(argv[1], "-a") == 0) {
-        unauth_mode = 1;
-    }
-
+	if (argc > 1 && strcmp(argv[1], "-a") == 0) {
+	    char *tty = ttyname(STDIN_FILENO);
+	
+	    /* * Restrict autologin to the physical console or specific VTYs.
+	     * Adjust "tty0" or "console" to match your kernel's naming convention.
+	     */
+	    if (tty && (strcmp(tty, "/dev/console") == 0 || strcmp(tty, "/dev/tty00") == 0 || strcmp(tty, "/dev/tty0") == 0 || strcmp(tty, "/dev/ttyE1") == 0 || strcmp(tty, "/dev/tty") == 0 || strcmp(tty, "/dev/vty0") == 0)) {
+	        unauth_mode = 1;
+	    } else {
+	        fprintf(stderr, "Autologin refused on insecure terminal: %s\n", tty ? tty : "unknown");
+	        exit(1);
+	    }
+	}
     while (1) {
         struct termios t;
 	char prompt[64]; /* Buffer for the dynamic password prompt */
