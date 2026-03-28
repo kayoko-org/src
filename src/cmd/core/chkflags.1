@@ -1,0 +1,51 @@
+.Dd March 28, 2026
+.Dt CHKFLAGS 1
+.Os Xao
+.Sh NAME
+.Nm chkflags
+.Nd check BSD file flags
+.Sh SYNOPSIS
+.Nm
+.Op Fl v
+.Op Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility displays the system and user-level file flags associated with the specified
+.Ar file
+operands. These flags, such as immutability or append-only status, are specific to the 
+underlying filesystem and provide protections beyond standard POSIX permissions.
+.Pp
+If no
+.Ar file
+is specified,
+.Nm
+operates on the current directory.
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl v
+Verbose mode. Displays the numerical bitmask alongside the human-readable labels.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "POSIXLY_WRONG"
+.It Ev POSIXLY_WRONG
+If set,
+.Nm
+may display extended attributes or internal kernel-only flags that are normally 
+hidden for compatibility.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Check flags for a sensitive system file:
+.Pp
+.Dl $ chkflags /bin/sh
+.Pp
+Check flags for all files in the current directory:
+.Pp
+.Dl $ chkflags *
+.Sh SEE ALSO
+.Xr chflags 2 ,
+.Xr ls 1 ,
+.Xr stat 2
