@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -158,6 +159,31 @@ authenticated:
     shell_name = (shell_name) ? shell_name + 1 : shell_path;
     
     snprintf(login_argv0, sizeof(login_argv0), "-%s", shell_name);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork failed");
+    } else if (pid == 0) {
+        /* Child process: Drop privileges to the user's level */
+        if (setgid(pw->pw_gid) != 0) {
+            perror("setgid failed");
+            exit(1);
+        }
+        if (setuid(pw->pw_uid) != 0) {
+            perror("setuid failed");
+            exit(1);
+        }
+
+        /* Execute motd as the user */
+        execl("/sbin/motd", "motd", (char *)NULL);
+        
+        /* If execl fails, exit child so we don't end up with two shells */
+        exit(1);
+    } else {
+        /* Parent process: Wait for motd to finish before exec'ing the shell */
+        int status;
+        waitpid(pid, &status, 0);
+    }
 
     /* Perform the exec */
     execl(shell_path, login_argv0, (char *)NULL);

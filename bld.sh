@@ -193,7 +193,7 @@ echo "  [CC] login (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
     -o "$XAO_ROOT/sbin/login" \
     src/cmd/adm/login.c \
-    -lcrypt $LDFLAGS && chflags schg $XAO_ROOT/sbin/login
+    -lcrypt -lutil $LDFLAGS && chflags schg $XAO_ROOT/sbin/login
 
 
 echo "  [CC] sysmgr (special)"
