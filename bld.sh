@@ -50,10 +50,10 @@ export NBMAKE="$TOOL_DIR/bin/nbmake-$ARCH"
 
 # This only needs to happen once. It prevents all header skew.
 if [ ! -d "$NBSD_SRC/.git" ]; then
-    echo "--> Cloning Kayako gate..."
-    git clone --depth 1 https://github.com/Kayako/gate.git "$NBSD_SRC"
+    echo "--> Cloning Kayoko gate..."
+    git clone --depth 1 https://github.com/Kayoko/gate.git "$NBSD_SRC"
 fi
-# --- 2. Kayako Branding ---
+# --- 2. Kayoko Branding ---
 # --- 1. Build the "Tools" ---
 if [ ! -x "$NBMAKE" ]; then
     echo "--> Tools missing. Building NetBSD Toolchain..."
@@ -69,10 +69,10 @@ fi
 
 # --- 2. Branding (Only if changed) ---
 # We use a marker file to avoid unnecessary sed runs
-if [ ! -f "$NBSD_SRC/.kayako_branded" ]; then
-    echo "--> Applying Kayako Branding..."
-    sed -i 's/ost="NetBSD"/ost="Kayako"/' "$NBSD_SRC"/sys/conf/newvers.sh
-    touch "$NBSD_SRC/.kayako_branded"
+if [ ! -f "$NBSD_SRC/.kayoko_branded" ]; then
+    echo "--> Applying Kayoko Branding..."
+    sed -i 's/ost="NetBSD"/ost="Kayoko"/' "$NBSD_SRC"/sys/conf/newvers.sh
+    touch "$NBSD_SRC/.kayoko_branded"
 fi
 
 # Helper function for incremental component builds
@@ -116,7 +116,7 @@ echo "--> Syncing Headers to KAYAKO_ROOT..."
 # --- 3.5 Build the Kernel ---
 # Note: We use the custom "KAYAKO" config name here
 if [ ! -f "$OBJ_DIR/sys/arch/$ARCH/compile/KAYAKO/netbsd" ]; then
-    echo "--> Building Custom Kayako Kernel..."
+    echo "--> Building Custom Kayoko Kernel..."
     # If you haven't created a 'KAYAKO' config file yet, we'll use GENERIC as a base
     if [ ! -f "$NBSD_SRC/sys/arch/$ARCH/conf/KAYAKO" ]; then
         cp "$NBSD_SRC/sys/arch/$ARCH/conf/GENERIC" "$NBSD_SRC/sys/arch/$ARCH/conf/KAYAKO"
@@ -143,8 +143,8 @@ ln -sf ksh "$KAYAKO_ROOT/bin/sh"
 
 # 4. Build Boot & Login
 # Note: Ensure bootseq.c uses POSIX headers, no <linux/fs.h>
-# --- 4. Build Kayako Core Utilities ---
-echo "--> Building Kayako Core Utilities..."
+# --- 4. Build Kayoko Core Utilities ---
+echo "--> Building Kayoko Core Utilities..."
 for src_file in src/cmd/core/*.c; do
     # 1. Strip the directory path and extension
     base_name=$(basename "$src_file")
@@ -167,7 +167,7 @@ for src_file in src/cmd/core/*.c; do
     "$REAL_CC" $CFLAGS -O2 -static -s -o "$DEST_DIR/$bin_name" "$src_file" $LDFLAGS
     "$KAYAKO_ROOT/usr/bin/ln" -s "$KAYAKO_ROOT/bin/ed" "$KAYAKO_ROOT/bin/red"
 done
-echo "--> Building Kayako Administrative Utilities..."
+echo "--> Building Kayoko Administrative Utilities..."
 for src_file in src/cmd/adm/*.c; do
     # 1. Extract the base name (e.g., 'sysmgr')
     base_name=$(basename "$src_file" .c)
@@ -235,10 +235,10 @@ mkdir -p "$KAYAKO_ROOT"/usr/bin && cp src/cmd/adm/oslevel "$KAYAKO_ROOT"/usr/bin
 
 
 cat <<'EOF' > "$KAYAKO_ROOT"/etc/os-release
-NAME="openkayako"
+NAME="openkayoko"
 VERSION="7.3"
-ID=kayako
-PRETTY_NAME="Kayako"
+ID=kayoko
+PRETTY_NAME="Kayoko"
 VERSION_ID="7.3"
 KAYAKO_SERVICE_PACK="7300-03-02-2546"
 KAYAKO_RECOMMENDED_LEVEL="7300-03-00-0000"
@@ -274,7 +274,7 @@ print "--> Building bootloader (EFI)"
 # --- Variables for GPT Image Construction ---
 
 # The final output filename (UEFI branded)
-KAYAKO_USB_FINAL="$OBJ_DIR/kayako-uefi-$(date +%Y%m%d).img"
+KAYAKO_USB_FINAL="$OBJ_DIR/kayoko-uefi-$(date +%Y%m%d).img"
 
 # Intermediate partition files (the "bricks" for the image)
 EFI_IMG="$OBJ_DIR/efi.part"

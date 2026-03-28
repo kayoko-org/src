@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 	
-    if (getenv("KAYAKO_SESS") != NULL) {
+    if (getenv("KAYOKO_SESS") != NULL) {
     fprintf(stderr, "Nesting prohibited.\n");
     exit(1);
     }
