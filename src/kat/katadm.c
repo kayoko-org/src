@@ -66,18 +66,19 @@ uint64_t parse_privileges(char *priv_str) {
 }
 
 /* Low-level: push a specific UID/Priv/Path rule to the character device */
-void commit_rule(int fd, uid_t uid, uint64_t privs, const char *path) {
+void commit_rule(int fd, uid_t uid, uint64_t privs, const char *path, int type) {
     struct kat_rule rule;
     memset(&rule, 0, sizeof(rule));
 
     rule.uid = uid;
     rule.privileges = privs;
+    rule.type = type;   /* KAT_TYPE_ALLOW or KAT_TYPE_RESTRICT */
     rule.active = 1;
 
     if (path && strlen(path) > 0) {
         strncpy(rule.path, path, KAT_MAX_PATH - 1);
     } else {
-        rule.path[0] = '\0'; /* Full-Auto/Global Mode */
+        rule.path[0] = '\0'; /* Global Mode */
     }
 
     if (ioctl(fd, KATIOC_ADD_RULE, &rule) == -1) {
@@ -95,7 +96,6 @@ void load_rules(int fd) {
     char line[1024];
     int count = 0;
 
-    /* Declarative load: clear the slate first */
     if (ioctl(fd, KATIOC_CLEAR_RULES) == -1) {
         perror("Failed to clear existing KAT rules");
         fclose(fp);
@@ -103,7 +103,6 @@ void load_rules(int fd) {
     }
 
     while (fgets(line, sizeof(line), fp)) {
-        /* Skip comments and empty lines */
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
         line[strcspn(line, "\r\n")] = 0;
 
@@ -116,38 +115,39 @@ void load_rules(int fd) {
 
             char *identity = line;
             char *path = first_colon + 1;
-            uint64_t privs = parse_privileges(last_colon + 1);
+            char *priv_str = last_colon + 1;
 
-            /* Check for %group syntax (sudoers style) */
+            /* --- Logic to handle the '!' Restriction prefix --- */
+            int type = KAT_TYPE_ALLOW;
+            if (priv_str[0] == '!') {
+                type = KAT_TYPE_RESTRICT;
+                priv_str++; /* Move pointer forward to skip the '!' */
+            }
+
+            uint64_t privs = parse_privileges(priv_str);
+
             if (identity[0] == '%') {
                 struct group *gr = getgrnam(identity + 1);
                 if (!gr) {
                     fprintf(stderr, "Warning: Group '%s' not found.\n", identity + 1);
                     continue;
                 }
-                /* Commit every user in the group individually */
                 for (int i = 0; gr->gr_mem[i] != NULL; i++) {
                     struct passwd *pw = getpwnam(gr->gr_mem[i]);
                     if (pw) {
-                        commit_rule(fd, pw->pw_uid, privs, path);
+                        commit_rule(fd, pw->pw_uid, privs, path, type);
                         count++;
                     }
                 }
             } else {
-                /* Individual User: Resolve name to UID, or use literal UID */
-                uid_t uid;
                 struct passwd *pw = getpwnam(identity);
-                if (pw) {
-                    uid = pw->pw_uid;
-                } else {
-                    uid = (uid_t)atoi(identity);
-                }
-                commit_rule(fd, uid, privs, path);
+                uid_t uid = pw ? pw->pw_uid : (uid_t)atoi(identity);
+                commit_rule(fd, uid, privs, path, type);
                 count++;
             }
         }
     }
-    printf("Successfully committed %d rules to the Kernel Access Table.\n", count);
+    printf("Successfully committed %d rules (ALLOW/RESTRICT) to KAT.\n", count);
     fclose(fp);
 }
 

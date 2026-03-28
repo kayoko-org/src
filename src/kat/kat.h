@@ -8,6 +8,8 @@
 #define KAT_MAX_PATH    256
 #define KAT_MAX_RULES   1024
 #define KAT_DEV_NAME    "kat"
+#define KAT_TYPE_ALLOW    1
+#define KAT_TYPE_RESTRICT 2
 
 /* * --- KAT Privilege Bitmask ---
  * These map to NetBSD 11 KAUTH scopes.
@@ -45,6 +47,7 @@ struct kat_rule {
     uid_t    uid;                /* Target User ID */
     uint64_t privileges;         /* Bitmask of allowed KAT_PRIV_* */
     char     path[KAT_MAX_PATH]; /* Primary binary or target path */
+int      type;
     int      active;             /* Rule status toggle */
 };
 

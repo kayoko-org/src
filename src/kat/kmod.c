@@ -36,28 +36,35 @@ kat_log(uid_t uid, const char *scope, uint64_t priv, int result)
 static int
 kat_check(uid_t uid, uint64_t required_priv, const char *current_path)
 {
-    int res = KAUTH_RESULT_DEFER;
+    int allowed = 0;
 
     mutex_enter(&kat_mtx);
     for (int i = 0; i < kat_rule_count; i++) {
-        /* 1. Does the UID match? */
-        /* 2. Does the rule contain the privilege bit we need? */
-        if (kat_table[i].uid == uid && (kat_table[i].privileges & required_priv)) {
+        if (!kat_table[i].active || kat_table[i].uid != uid)
+            continue;
+
+        /* Check if the privilege bit matches */
+        if (kat_table[i].privileges & required_priv) {
             
-            /* * 3. THE "FULL AUTO" LOGIC:
-             * Match if the rule has NO path (global) OR the paths match exactly.
-             */
+            /* Path validation (Global or Match) */
             if (kat_table[i].path[0] == '\0' || 
                (current_path && strcmp(kat_table[i].path, current_path) == 0)) {
                 
-                res = KAUTH_RESULT_ALLOW;
-                break;
+                /* EXPLICIT RESTRICTION: Immediate exit with DEFER/DENY */
+                if (kat_table[i].type == KAT_TYPE_RESTRICT) {
+                    mutex_exit(&kat_mtx);
+                    return KAUTH_RESULT_DENY; 
+                }
+
+                if (kat_table[i].type == KAT_TYPE_ALLOW) {
+                    allowed = 1;
+                }
             }
         }
     }
     mutex_exit(&kat_mtx);
 
-    return res;
+    return (allowed) ? KAUTH_RESULT_ALLOW : KAUTH_RESULT_DENY;
 }
 
 /* --- Scope Callbacks --- */
@@ -155,10 +162,19 @@ int
 katioctl(dev_t dev, u_long cmd, void *data, int flag, struct lwp *l)
 {
     int error = 0;
+    uid_t caller_uid = kauth_cred_getuid(l->l_cred);
+
     switch (cmd) {
     case KATIOC_ADD_RULE:
-        if (kauth_authorize_system(l->l_cred, KAUTH_SYSTEM_MODULE, 0, NULL, NULL, NULL) != 0)
-            return EPERM;
+        /* --- BOOTSTRAP BYPASS --- 
+         * If the caller is root (UID 0), we allow the IOCTL even if
+         * the KAT table doesn't have an explicit rule yet. 
+         */
+        if (caller_uid != 0) {
+            if (kauth_authorize_system(l->l_cred, KAUTH_SYSTEM_MODULE, 0, NULL, NULL, NULL) != 0)
+                return EPERM;
+        }
+
         mutex_enter(&kat_mtx);
         if (kat_rule_count < KAT_MAX_RULES) {
             memcpy(&kat_table[kat_rule_count++], data, sizeof(struct kat_rule));
@@ -167,12 +183,21 @@ katioctl(dev_t dev, u_long cmd, void *data, int flag, struct lwp *l)
         }
         mutex_exit(&kat_mtx);
         break;
+
     case KATIOC_CLEAR_RULES:
+        /* Same bypass for clearing rules so you don't lock yourself out */
+        if (caller_uid != 0) {
+            if (kauth_authorize_system(l->l_cred, KAUTH_SYSTEM_MODULE, 0, NULL, NULL, NULL) != 0)
+                return EPERM;
+        }
+
         mutex_enter(&kat_mtx);
         kat_rule_count = 0;
         mutex_exit(&kat_mtx);
         break;
-    default: error = ENOTTY;
+
+    default: 
+        error = ENOTTY;
     }
     return error;
 }
