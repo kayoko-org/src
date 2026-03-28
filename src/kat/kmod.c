@@ -40,22 +40,23 @@ kat_check(uid_t uid, uint64_t required_priv, const char *current_path)
 
     mutex_enter(&kat_mtx);
     for (int i = 0; i < kat_rule_count; i++) {
+        /* 1. Does the UID match? */
+        /* 2. Does the rule contain the privilege bit we need? */
         if (kat_table[i].uid == uid && (kat_table[i].privileges & required_priv)) {
-            /* * Match if:
-             * 1. The rule has no path (global privilege for that UID)
-             * 2. The current process path matches the rule
-             * 3. OR the path ends with our wrapper name (optional convenience)
+            
+            /* * 3. THE "FULL AUTO" LOGIC:
+             * Match if the rule has NO path (global) OR the paths match exactly.
              */
-            if (kat_table[i].path[0] == '\0' ||
+            if (kat_table[i].path[0] == '\0' || 
                (current_path && strcmp(kat_table[i].path, current_path) == 0)) {
+                
                 res = KAUTH_RESULT_ALLOW;
                 break;
             }
         }
     }
     mutex_exit(&kat_mtx);
-    
-    // Log failures only to keep dmesg clean, or keep your debug printf
+
     return res;
 }
 
@@ -83,47 +84,52 @@ kat_vfs_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
     void *arg0, void *arg1, void *arg2, void *arg3)
 {
     uint64_t priv = 0;
+    uid_t uid = kauth_cred_getuid(cred);
     struct proc *p = curproc;
     const char *path = (p != NULL) ? p->p_path : NULL;
 
-    /* Use bitwise AND to catch combined action flags */
-    if (action & (KAUTH_VNODE_WRITE_DATA | 
-                  KAUTH_VNODE_ADD_FILE | 
-                  KAUTH_VNODE_DELETE | 
+    /* Catch Write/Create/Delete/Rename */
+    if (action & (KAUTH_VNODE_WRITE_DATA | KAUTH_VNODE_ADD_FILE | 
+                  KAUTH_VNODE_DELETE | KAUTH_VNODE_RENAME |
                   KAUTH_VNODE_ADD_SUBDIRECTORY)) {
         priv = KAT_PRIV_VFS_WRITE;
-    } 
-    else if (action & (KAUTH_VNODE_READ_DATA | 
-                       KAUTH_VNODE_ACCESS)) {
+    }
+    /* Catch Read/Search/Attributes */
+    else if (action & (KAUTH_VNODE_READ_DATA | KAUTH_VNODE_LIST_DIRECTORY | 
+                       KAUTH_VNODE_READ_ATTRIBUTES | KAUTH_VNODE_ACCESS)) {
         priv = KAT_PRIV_VFS_READ;
     }
 
-    /* If we still don't recognize the action, log it for debugging */
-    if (priv == 0) {
-        if (kauth_cred_getuid(cred) == 1000) {
-            /* Changed to %u and 0x%x for easier mapping to kernel headers */
-            printf("KAT_MISS: Action %u (0x%x) requested by %s\n", 
-                   action, (unsigned int)action, path ? path : "unknown");
-        }
-        return KAUTH_RESULT_DEFER;
+    if (priv == 0) return KAUTH_RESULT_DEFER;
+
+    int res = kat_check(uid, priv, path);
+    if (res == KAUTH_RESULT_ALLOW) {
+        // kat_log(uid, "VNODE", priv, res); // Commented out to reduce dmesg spam
+        return KAUTH_RESULT_ALLOW;
     }
 
-    int res = kat_check(kauth_cred_getuid(cred), priv, path);
-    if (res == KAUTH_RESULT_ALLOW)
-        kat_log(kauth_cred_getuid(cred), "VNODE", priv, res);
-
-    return res;
+    return KAUTH_RESULT_DEFER;
 }
 
 static int
 kat_net_cb(kauth_cred_t cred, kauth_action_t action, void *cookie,
     void *arg0, void *arg1, void *arg2, void *arg3)
 {
-    if (action == KAUTH_NETWORK_BIND) {
-	int res = kat_check(kauth_cred_getuid(cred), KAT_PRIV_NET_BIND, curproc->p_path);
-	if (res == KAUTH_RESULT_ALLOW) kat_log(kauth_cred_getuid(cred), "NET", KAT_PRIV_NET_BIND, res);
-        return res;
+    uint64_t priv = 0;
+    uid_t uid = kauth_cred_getuid(cred);
+    struct proc *p = curproc;
+
+    switch (action) {
+        case KAUTH_NETWORK_BIND:       priv = KAT_PRIV_NET_BIND; break;
+        case KAUTH_NETWORK_SOCKET:  priv = KAT_PRIV_NET_RAW; break;
     }
+
+    if (priv == 0) return KAUTH_RESULT_DEFER;
+
+    // Use curproc->p_path here for the check
+    int res = kat_check(uid, priv, p ? p->p_path : NULL);
+    if (res == KAUTH_RESULT_ALLOW) return KAUTH_RESULT_ALLOW;
+
     return KAUTH_RESULT_DEFER;
 }
 
