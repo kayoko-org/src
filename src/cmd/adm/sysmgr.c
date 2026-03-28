@@ -15,24 +15,33 @@ typedef struct {
 
 static const entry_t db[] = {
     /* --- EMERGENCY & STATE --- */
-    { "Sync Disks",  "sync; sync", 0, NULL },
-    { "Remount Root R/O",      "mount -u -o ro /", 0, NULL },
-    { "Remount Root R/W",     "mount -u -o rw /", 0, NULL },
-    { "Reboot System",   "reboot", 0, NULL },
-    { "Halt System",                 "halt -p", 0, NULL },
-    
+    { "Sync Disks",          "sync; sync", 0, NULL },
+    { "Remount Root R/O",    "mount -u -o ro /", 0, NULL },
+    { "Remount Root R/W",    "mount -u -o rw /", 0, NULL },
+    { "Reboot System",       "reboot", 0, NULL },
+    { "Halt System",         "halt -p", 0, NULL },
+
+    /* --- USER & GROUP MANAGEMENT --- */
+    { "Add New User",        "useradd -m %s", 1, "Username to add: " },
+    { "Modify User",   "usermod %s", 1, "Username and flags (e.g. -G wheel joe): " },
+    { "Set User Password",   "passwd %s", 1, "Username to change password: " },
+    { "Delete User",         "userdel -r %s", 1, "Username to remove: " },
+    { "Add New Group",       "groupadd %s", 1, "Group name to add: " },
+    { "Delete Group",        "groupdel %s", 1, "Group name to remove: " },
+    { "Lock User Account",   "userconf -L %s", 1, "Username to lock: " },
+
     /* --- PROCESS CONTROL --- */
-    { "List All Processes",          "ps -auwwx", 0, NULL },
-    { "Kill PID (-9)",               "kill -9 %s", 1, "PID: " },
-    { "Kill All Processes", "kill -9 -1", 0, NULL },
-    
+    { "List All Processes",  "ps -auwwx", 0, NULL },
+    { "Kill PID (-9)",       "kill -9 %s", 1, "PID: " },
+    { "Kill All Processes",  "kill -9 -1", 0, NULL },
+
     /* --- NETWORK --- */
-    { "Interface Status",            "ifconfig %s", 1, "IF (re0): " },
-    { "Show Listening Ports",        "netstat -an | grep LISTEN", 0, NULL },
-    
+    { "Interface Status",    "ifconfig %s", 1, "IF (e.g. wm0): " },
+    { "Show Listening Ports","netstat -an | grep LISTEN", 0, NULL },
+
     /* --- SYSTEM --- */
-    { "Shell Escape",                "!sh", 0, NULL },
-    { "Exit SYSMGR",                 NULL, 0, NULL }
+    { "Shell Escape",        "!sh", 0, NULL },
+    { "Exit SYSMGR",         NULL, 0, NULL }
 };
 
 #define COUNT (sizeof(db) / sizeof(entry_t))
