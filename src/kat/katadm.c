@@ -28,11 +28,11 @@ void load_rules(int fd) {
     char line[512];
     int count = 0;
 
-    while (fgets(line, sizeof(line), fp)) {
-        // Skip comments and empty lines
+while (fgets(line, sizeof(line), fp)) {
         if (line[0] == '#' || line[0] == '\n') continue;
 
-        if (sscanf(line, "%u:%255[^:]:%u", &rule.uid, rule.path, &rule.privileges) == 3) {
+        // Removed the stray semicolon and added 'if'
+        if (sscanf(line, "%u:%255[^:]:%llu", &rule.uid, rule.path, &rule.privileges) == 3) {
             if (ioctl(fd, KATIOC_ADD_RULE, &rule) == -1) {
                 fprintf(stderr, "Failed to add rule for UID %u: %s\n", rule.uid, strerror(errno));
             } else {
@@ -40,9 +40,6 @@ void load_rules(int fd) {
             }
         }
     }
-
-    printf("Successfully loaded %d rules into KAT.\n", count);
-    fclose(fp);
 }
 
 int main(int argc, char *argv[]) {
