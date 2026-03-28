@@ -176,7 +176,11 @@ for src_file in src/cmd/adm/*.c; do
         continue
     fi
 
-   if [ "$base_name" = "sysmgr" ]; then
+    if [ "$base_name" = "lsdsk" ]; then
+        continue
+    fi
+   
+    if [ "$base_name" = "sysmgr" ]; then
         continue
     fi
 
@@ -189,6 +193,13 @@ for src_file in src/cmd/adm/*.c; do
 done
 
 # 4. Handle Special Case: sysmgr (needs -lcurses -lterminfo)
+echo "  [CC] lsdsk (special)"
+"$REAL_CC" $CFLAGS -O2 -static -s \
+    -o "$XAO_ROOT/bin/lsdsk" \
+    src/cmd/adm/lsdsk.c \
+    -lprop -lutil $LDFLAGS && chflags schg $XAO_ROOT/bin/lsdsk
+
+
 echo "  [CC] login (special)"
 "$REAL_CC" $CFLAGS -O2 -static -s \
     -o "$XAO_ROOT/sbin/login" \
