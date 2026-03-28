@@ -18,7 +18,7 @@ int main() {
     // Logic is now hardcoded and compiled, not read from a writable file
     if (strcmp(user, "root") == 0) {
         printf("Welcome to openXao. Copyright (C) 2026 The openXao Project\n");
-        printf("'You are root, be careful!.' - a wise man\n");
+        printf("'You are root, be careful!' - a wise man\n");
     } else {
         printf("Welcome to openXao, %s. Copyright (C) 2026 The openXao Project\n", user);
     }

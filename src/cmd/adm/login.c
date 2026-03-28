@@ -31,8 +31,7 @@ void print_splash(const char *user) {
     char time_buf[64];
     get_aix_time(time_buf);
     (void)user; /* Reserve for future 'Last login for %s' logic */
-    printf("Last login: %s on vty0\n", time_buf);
-    printf("Welcome to openXao. (C) 2026 The openXao Project.\n\n");
+    printf("Last login at: %s\n", time_buf);
 }
 
 int main(int argc, char *argv[]) {
@@ -59,8 +58,8 @@ int main(int argc, char *argv[]) {
 
 	        // Check if the terminal exists in /etc/ttys and has the "secure" flag
 	        if (ty && (ty->ty_status & TTY_SECURE)) {
-	            unauth_mode = 1;
-	        } else {
+ 		printf("");
+		} else {
 	            fprintf(stderr, "%s is not a secure terminal.\n", tty);
 	            exit(1);
 	        }
@@ -111,7 +110,9 @@ tcsetattr(STDIN_FILENO, TCSANOW, &t);
         continue;
 
 authenticated:
-    print_splash(user);
+	printf("\033[H\033[2J");
+	fflush(stdout);
+	print_splash(user);
 
     /* 1. Retrieve the login class for this user */
     login_cap_t *lc = login_getpwclass(pw);
