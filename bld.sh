@@ -165,6 +165,7 @@ for src_file in src/cmd/core/*.c; do
     # 3. Compile as a static binary
     # Note: Ensure $XAO_ROOT/usr/bin exists before running this!
     "$REAL_CC" $CFLAGS -O2 -static -s -o "$DEST_DIR/$bin_name" "$src_file" $LDFLAGS
+    "$XAO_ROOT/usr/bin/ln" -s "$XAO_ROOT/bin/ed" "$XAO_ROOT/bin/red"
 done
 echo "--> Building Xao Administrative Utilities..."
 for src_file in src/cmd/adm/*.c; do
