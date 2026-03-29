@@ -34,7 +34,7 @@ by Licensee.
 PROPRIETARY
 -----------
 Licensee acknowledges that the Software, including but not limited 
-to the source code for 'srcmstr', 'sysmgr', and the 'Kayoko' kernel, 
+to the source code for 'srcmstr', 'KAT', the 'Kayoko userland', 'smat', and the 'Kayoko' kernel, 
 is the confidential and proprietary property and a trade secret of 
 Licensor. Licensee shall:
    (a) Not disclose the Source Code to any third party;
