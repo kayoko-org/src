@@ -164,7 +164,7 @@ tasks["coreutils"] = function()
             print(string.format("[CC] %s -> %s", src, bin:gsub(cfg.root, "")))
             -- Kayoko defaults: Static, stripped, and linked against libutil
             local cmd = string.format("cc -I%s/include -O2 -static -s -o %s %s %s -lutil %s",
-                cfg.inst, bin, src, os.getenv("LDFLAGS") or "", extra_ld or "")
+                cfg.inst, bin, src, os.getenv("LDFLAGS") or "-lutil -lm -lprop", extra_ld or "")
             if not os.execute(cmd) then
                 print("\n[!] Compilation failed for " .. src)
                 os.exit(1)
