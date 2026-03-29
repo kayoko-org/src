@@ -1,4 +1,5 @@
 #include <kayoko/textproc/ed.h>
+#include <kayoko/textproc/regex/bre.h>
 #include <kayoko/textproc/ed/buffer.h>
 #include <kayoko/textproc/ed/commands.h>
 #include <signal.h>
@@ -75,51 +76,6 @@ void join_lines(Ed *e, int a, int b) {
     del_lines(e, a + 1, b);
     e->curr = a;
 }
-
-static void do_sub(Ed *e, int a, int b, char *p) {
-    char delim = *p++;
-    char *re_end = strchr(p, delim);
-    if (!re_end) { set_err(e, "delimiter mismatch"); return; }
-
-    char *pat = strndup(p, re_end - p); regex_t re;
-    if (strlen(pat) == 0) {
-        if (!e->last_re || regcomp(&re, e->last_re, 0) != 0) {
-            set_err(e, "no prev re"); free(pat); return;
-        }
-    } else {
-        if (regcomp(&re, pat, 0) != 0) { set_err(e, "bad re"); free(pat); return; }
-        free(e->last_re); e->last_re = strdup(pat);
-    }
-    free(pat); p = re_end + 1;
-
-    char *rhs_end = strchr(p, delim);
-    if (rhs_end) {
-        free(e->rhs); e->rhs = strndup(p, rhs_end - p);
-        p = rhs_end + 1;
-    }
-
-    int global = (strchr(p, 'g') != NULL);
-
-    for (int i = a; i <= b; i++) {
-        regmatch_t pm; char *src = e->lines[i-1].rs->data;
-        char buf[8192] = {0}; int off = 0, found = 0; // Note: 8192 static limit
-
-        while (regexec(&re, src + off, 1, &pm, 0) == 0) {
-            found = 1;
-            strncat(buf, src + off, pm.rm_so);
-            strcat(buf, e->rhs ? e->rhs : "");
-            off += pm.rm_eo;
-            if (!global) break;
-        }
-        if (found) {
-            strcat(buf, src + off);
-            update_line_text(&e->lines[i-1], buf);
-            e->curr = i; e->dirty = 1;
-        }
-    }
-    regfree(&re);
-}
-
 
 void move_lines(Ed *e, int a, int b, int t) {
     if (a < 1 || b > (int)e->count || a > b || (t >= a && t < b)) {
