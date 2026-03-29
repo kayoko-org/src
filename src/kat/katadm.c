@@ -16,22 +16,22 @@ static struct {
     const char *name;
     uint64_t mask;
 } priv_map[] = {
-    {"SYS_TIME",     KAT_PRIV_SYS_TIME},
-    {"SYS_MODULE",   KAT_PRIV_SYS_MODULE},
-    {"SYS_REBOOT",   KAT_PRIV_SYS_REBOOT},
-    {"SYS_CHROOT",   KAT_PRIV_SYS_CHROOT},
-    {"SYS_SYSCTL",   KAT_PRIV_SYS_SYSCTL},
-    {"PROC_EXEC",    KAT_PRIV_PROC_EXEC},
-    {"PROC_DEBUG",   KAT_PRIV_PROC_DEBUG},
-    {"PROC_SETID",   KAT_PRIV_PROC_SETID},
-    {"PROC_NICE",    KAT_PRIV_PROC_NICE},
-    {"NET_BIND",     KAT_PRIV_NET_BIND},
-    {"NET_FIREWALL", KAT_PRIV_NET_FIREWALL},
-    {"NET_RAW",      KAT_PRIV_NET_RAW},
-    {"VFS_WRITE",    KAT_PRIV_VFS_WRITE},
-    {"VFS_READ",     KAT_PRIV_VFS_READ},
-    {"VFS_RETAIN",   KAT_PRIV_VFS_RETAIN},
-    {"DEV_RAWIO",    KAT_PRIV_DEV_RAWIO},
+    {"sys.time",     KAT_PRIV_SYS_TIME},
+    {"sys.module",   KAT_PRIV_SYS_MODULE},
+    {"sys.reboot",   KAT_PRIV_SYS_REBOOT},
+    {"sys.chroot",   KAT_PRIV_SYS_CHROOT},
+    {"sys.sysctl",   KAT_PRIV_SYS_SYSCTL},
+    {"proc.exec",    KAT_PRIV_PROC_EXEC},
+    {"proc.debug",   KAT_PRIV_PROC_DEBUG},
+    {"proc.setid",   KAT_PRIV_PROC_SETID},
+    {"proc.nice",    KAT_PRIV_PROC_NICE},
+    {"net.bind",     KAT_PRIV_NET_BIND},
+    {"net.firewall", KAT_PRIV_NET_FIREWALL},
+    {"net.raw",      KAT_PRIV_NET_RAW},
+    {"vfs.write",    KAT_PRIV_VFS_WRITE},
+    {"vfs.read",     KAT_PRIV_VFS_READ},
+    {"vfs.retain",   KAT_PRIV_VFS_RETAIN},
+    {"dev.rawio",    KAT_PRIV_DEV_RAWIO},
     {NULL, 0}
 };
 
@@ -87,15 +87,16 @@ void commit_rule(int fd, uid_t uid, uint64_t privs, const char *path, int type) 
 }
 
 void load_rules(int fd) {
-    FILE *fp = fopen("/etc/kat.conf", "r");
+    FILE *fp = fopen("/etc/kat", "r");
     if (!fp) {
-        perror("Could not open /etc/kat.conf");
+        perror("Could not open /etc/kat");
         return;
     }
 
     char line[1024];
     int count = 0;
 
+    /* Wipe current kernel table before reloading */
     if (ioctl(fd, KATIOC_CLEAR_RULES) == -1) {
         perror("Failed to clear existing KAT rules");
         fclose(fp);
@@ -103,51 +104,59 @@ void load_rules(int fd) {
     }
 
     while (fgets(line, sizeof(line), fp)) {
-        if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
+        /* 1. Strip comments starting with '--' */
+        char *comment_start = strstr(line, "--");
+        if (comment_start) {
+            *comment_start = '\0';
+        }
+
+        /* 2. Basic cleanup: trim trailing newline/spaces */
         line[strcspn(line, "\r\n")] = 0;
 
-        char *first_colon = strchr(line, ':');
-        char *last_colon = strrchr(line, ':');
+        /* 3. Extract the three columns: Identity, Path, Privilege */
+        char identity[64], path[KAT_MAX_PATH], priv_raw[256];
+        
+        /* sscanf with %s automatically skips any amount of tabs or spaces */
+        if (sscanf(line, "%63s %255s %255s", identity, path, priv_raw) != 3) {
+            continue; /* Skip empty lines or malformed rows */
+        }
 
-        if (first_colon && last_colon && first_colon != last_colon) {
-            *first_colon = '\0';
-            *last_colon = '\0';
+        /* 4. Handle the '!' Restriction prefix */
+        int type = KAT_TYPE_ALLOW;
+        char *priv_ptr = priv_raw;
+        if (priv_raw[0] == '!') {
+            type = KAT_TYPE_RESTRICT;
+            priv_ptr++; /* Move past the '!' */
+        }
 
-            char *identity = line;
-            char *path = first_colon + 1;
-            char *priv_str = last_colon + 1;
+        uint64_t privs = parse_privileges(priv_ptr);
 
-            /* --- Logic to handle the '!' Restriction prefix --- */
-            int type = KAT_TYPE_ALLOW;
-            if (priv_str[0] == '!') {
-                type = KAT_TYPE_RESTRICT;
-                priv_str++; /* Move pointer forward to skip the '!' */
+        /* 5. Logic for '*' Path (Global Mode) */
+        const char *final_path = (strcmp(path, "*") == 0) ? "" : path;
+
+        /* 6. Expand Groups (%) or Process UIDs */
+        if (identity[0] == '%') {
+            struct group *gr = getgrnam(identity + 1);
+            if (!gr) {
+                fprintf(stderr, "Warning: Group '%s' not found.\n", identity + 1);
+                continue;
             }
-
-            uint64_t privs = parse_privileges(priv_str);
-
-            if (identity[0] == '%') {
-                struct group *gr = getgrnam(identity + 1);
-                if (!gr) {
-                    fprintf(stderr, "Warning: Group '%s' not found.\n", identity + 1);
-                    continue;
+            for (int i = 0; gr->gr_mem[i] != NULL; i++) {
+                struct passwd *pw = getpwnam(gr->gr_mem[i]);
+                if (pw) {
+                    commit_rule(fd, pw->pw_uid, privs, final_path, type);
+                    count++;
                 }
-                for (int i = 0; gr->gr_mem[i] != NULL; i++) {
-                    struct passwd *pw = getpwnam(gr->gr_mem[i]);
-                    if (pw) {
-                        commit_rule(fd, pw->pw_uid, privs, path, type);
-                        count++;
-                    }
-                }
-            } else {
-                struct passwd *pw = getpwnam(identity);
-                uid_t uid = pw ? pw->pw_uid : (uid_t)atoi(identity);
-                commit_rule(fd, uid, privs, path, type);
-                count++;
             }
+        } else {
+            struct passwd *pw = getpwnam(identity);
+            uid_t uid = pw ? pw->pw_uid : (uid_t)atoi(identity);
+            commit_rule(fd, uid, privs, final_path, type);
+            count++;
         }
     }
-    printf("Successfully committed %d rules (ALLOW/RESTRICT) to KAT.\n", count);
+
+    printf("Successfully loaded %d rules from /etc/kat.conf\n", count);
     fclose(fp);
 }
 

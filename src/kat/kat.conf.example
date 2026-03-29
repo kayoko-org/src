@@ -1,29 +1,18 @@
-# ==========================================================
-# Kayoko Kernel Access Table (KAT) Configuration
-# Format: <user|%group>:<binary_path>:<privileges>
-# ==========================================================
+-- ==========================================================
+-- Kayoko Kernel Access Table (KAT) Configuration
+-- Format: Identity [TAB] Path [TAB] [!]Privilege
+-- ==========================================================
 
-# 1. THE "ADMIN" ROLE
-# Give all members of the 'wheel' group full VFS bypass globally.
-# Leaving the path empty (::) applies the rule to any process they run.
-%wheel::VFS_WRITE|VFS_READ|VFS_RETAIN
+-- 1. THE "ADMIN" ROLE
+%wheel	*	vfs.write|vfs.read|vfs.retain
 
-# 2. THE "NETWORK" ROLE
-# Allow the 'operators' group to bind to privileged ports (<1024) 
-# and modify the system clock/NTP.
-%operators::NET_BIND|SYS_TIME
+-- 2. THE "NETWORK" ROLE
+%operators	*	net.bind|sys.time
 
-# 3. SPECIFIC APPLICATION HARDENING
-# Allow the 'www' user ONLY the privilege to bind ports, 
-# and only when running the specific web server binary.
-www:/usr/local/libexec/httpd:NET_BIND
+-- 3. SPECIFIC APPLICATION HARDENING
+www	/usr/local/libexec/httpd	net.bind
 
-# 4. DEVELOPER SANDBOX
-# Give 'lars' high-level system privileges for kernel work.
-lars::SYS_MODULE|DEV_RAWIO|SYS_CHROOT
-dummy::!NET_RAW
-root::!NET_RAW
-
-# 5. LEGACY / MANUAL OVERRIDES
-# You can still use raw UIDs and hex/decimal masks if needed.
-1001::0x40000000
+-- 4. DEVELOPER SANDBOX
+lars	*	sys.module|dev.rawio|sys.chroot
+dummy	*	!net.raw
+root	*	!net.raw
