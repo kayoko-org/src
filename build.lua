@@ -159,12 +159,27 @@ tasks["coreutils"] = function()
         ed = "/bin/", login = "/sbin/", smat = "/sbin/", lsdsk = "/bin/"
     }
 
+
+	-- Define special library requirements here
+    local special_libs = {
+        login = "-lcrypt",
+        smat  = "-lcurses -llua -lm -lterminfo",
+        lsdsk = "-lprop"
+    }
+
+    -- 1. THE UNSTRUCTURED HANDLER (for .c files)
     local function compile_util(src, bin, extra_ld)
         if needs_update(src, bin) then
+            local name = bin:match("([^/]+)$")
+            local libs = special_libs[name] or ""
+            
+            -- Default libs + the special ones
+            local ldflags = string.format("-lutil -lm %s", libs)
+
             print(string.format("[CC] %s -> %s", src, bin:gsub(cfg.root, "")))
-            -- Kayoko defaults: Static, stripped, and linked against libutil
-            local cmd = string.format("cc -I%s/include -O2 -static -s -o %s %s %s -lutil %s",
-                cfg.inst, bin, src, os.getenv("LDFLAGS") or "-lutil -lm -lprop", extra_ld or "")
+            local cmd = string.format("cc -I%s/include -O2 -static -s -o %s %s %s %s",
+                cfg.inst, bin, src, ldflags, extra_ld or "")
+
             if not os.execute(cmd) then
                 print("\n[!] Compilation failed for " .. src)
                 os.exit(1)
@@ -172,26 +187,33 @@ tasks["coreutils"] = function()
         end
     end
 
-    local categories = {"core", "adm", "textproc"}
+
+	local categories = {"core", "adm", "textproc"}
     for _, cat in ipairs(categories) do
         local base_dir = "src/cmd/" .. cat
         local handle = io.popen("ls -F " .. base_dir .. " 2>/dev/null")
-        
+
         if handle then
             for entry in handle:lines() do
                 if entry:match("/$") then
-                    -- STRUCTURED: Entry is a directory (e.g., textproc/ed/)
-                    local name = entry:sub(1, -2) -- Strip trailing slash for map lookup
+                    -- STRUCTURED: Entry is a directory (e.g., cat/, login/)
+                    local name = entry:sub(1, -2)
                     local subdir = base_dir .. "/" .. name
                     local target_dir = path_map[name] or "/usr/bin/"
 
                     if io.open(subdir .. "/Makefile", "r") then
                         print(string.format("[MAKE] %s", subdir))
-                        
-                        -- Pass BINDIR for the internal path and DESTDIR for the physical root
-                        -- Ensure no double slashes or nil strings occur during concat
-                        local make_cmd = string.format("make -C %s BINDIR=%s DESTDIR=%s install",
-                            subdir, target_dir, cfg.root)
+
+                        -- Look up if this structured tool needs special flags
+                        local libs = special_libs[name]
+                        local env = ""
+                        if libs then
+                            -- Inject into LDFLAGS for the Makefile
+                            env = string.format("LDFLAGS='%s' ", libs)
+                        end
+
+                        local make_cmd = string.format("%smake -C %s BINDIR=%s DESTDIR=%s install",
+                            env, subdir, target_dir, cfg.root)
 
                         if not os.execute(make_cmd) then
                             print("[!] Make failed in " .. subdir)
@@ -200,21 +222,18 @@ tasks["coreutils"] = function()
                     end
 
                 elseif entry:match("%.c$") then
-                    -- UNSTRUCTURED: Entry is a loose .c file (e.g., core/ls.c)
+                    -- UNSTRUCTURED: Entry is a .c file
                     local name = entry:match("([^/]+)%.c$")
                     local target_dir = path_map[name] or "/usr/bin/"
-                    
-                    -- Ensure target directory exists in the Kayoko root
                     os.execute("mkdir -p " .. cfg.root .. target_dir)
-                    
                     compile_util(base_dir .. "/" .. entry, cfg.root .. target_dir .. name)
                 end
             end
             handle:close()
         end
-    end
+    end		
 
-    -- Final hardening for the Kayoko environment
+     -- Final hardening for the Kayoko environment
     print("--> Setting system immutable flags")
     os.execute("chflags schg " .. cfg.root .. "/sbin/login")
     
