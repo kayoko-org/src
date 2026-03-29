@@ -1,4 +1,5 @@
 #include "ed.h"
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +7,23 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <regex.h>
+static Ed *global_e = NULL;
+
+void handle_hup(int sig) {
+    if (!global_e || !global_e->dirty || global_e->count == 0) {
+        exit(sig);
+    }
+
+    /* POSIX: try to save to ed.hup if a hangup occurs */
+    FILE *hf = fopen("ed.hup", "w");
+    if (hf) {
+        for (size_t i = 0; i < global_e->count; i++) {
+            fprintf(hf, "%s\n", global_e->lines[i].rs->data);
+        }
+        fclose(hf);
+    }
+    exit(sig);
+}
 
 /* Forward declaration so do_global can call it */
 void exec_cmd(Ed *e, int a, int b, char *p, int *is_q, int has_a);
@@ -420,7 +438,15 @@ void exec_cmd(Ed *e, int a, int b, char *p, int *is_q, int has_a) {
 int main(int argc, char **argv) {
     Ed e; ed_init(&e);
     char *ln = NULL; size_t ln_cap = 0;
+    global_e = &e;
     setvbuf(stdout, NULL, _IONBF, 0);
+
+    /* Register SIGHUP handler */
+    struct sigaction sa;
+    sa.sa_handler = handle_hup;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGHUP, &sa, NULL);
 
     if (argc > 0) {
         char *progname = strrchr(argv[0], '/');
