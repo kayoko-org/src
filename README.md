@@ -3,10 +3,14 @@ Kayoko
 
 Kayoko is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
 
-Binaries
+Features
 --------
-- [Releases](https://cdn.Kayoko.net/releases/latest)
 
+Kayoko has many features, including:
+- RBAC (via KAT - Kernel Access Table)
+- SMAT (System Manager for Administrative Tools)
+- and more
+  
 Testing
 -------
 
@@ -30,7 +34,7 @@ by Licensee.
 PROPRIETARY
 -----------
 Licensee acknowledges that the Software, including but not limited 
-to the source code for 'srcmstr', 'sysmgr', and the 'Kayoko' kernel, 
+to the source code for 'srcmstr', 'KAT', the 'Kayoko userland', 'smat', and the 'Kayoko' kernel, 
 is the confidential and proprietary property and a trade secret of 
 Licensor. Licensee shall:
    (a) Not disclose the Source Code to any third party;
