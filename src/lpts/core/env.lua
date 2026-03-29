@@ -1,0 +1,5 @@
+test("env: export variable", function()
+    local f = io.popen("env TESTVAR=123 env | grep TESTVAR")
+    local res = f:read("*a")
+    assert(res:match("TESTVAR=123"), "env failed to set variable")
+end)
