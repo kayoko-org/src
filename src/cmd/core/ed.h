@@ -3,25 +3,41 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <regex.h>
 
 typedef struct {
-    char *text;
-    int marks[26]; /* k command: marks a-z */
-    int gmark;     /* Global command flag */
+    char *data;
+    int refcount;
+} RefString;
+
+typedef struct {
+    RefString *rs;
+    int marks[26];
+    int gmark;
 } Line;
 
 typedef struct {
     Line *lines;
     size_t count, cap;
-    int curr;       /* Dot (.) */
+    int curr;
     int dirty;
     int show_help;
     int prompt;
     char *fname;
-    char *last_re;  /* Global Search Register */
+    char *last_re;
+    char *rhs;
     char *last_err;
-    char *rhs;      /* Last substitution RHS */
+    
+    /* Performant Undo */
+    Line *u_lines;
+    size_t u_count, u_cap;
+    int u_curr;
+    int can_undo;
+    int restricted;
+    char *last_sh;
+    int warned;
 } Ed;
 
 /* Core Logic */
