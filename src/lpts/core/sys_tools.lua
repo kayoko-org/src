@@ -1,9 +1,28 @@
-test("uname: basic output", function()
+test("uname: basic output & extended flags", function()
+    -- 1. Standard POSIX: Get the system name
     local f = io.popen("uname -s")
     local res = f:read("*a"):trim()
     f:close()
-    -- Should be 'Kayoko' or 'NetBSD' depending on your sysname refinement
     assert(#res > 0, "uname -s returned empty string")
+
+    -- 2. Probe for non-standard Extended flags
+    local extra_flags = { "-o", "-i", "-p", "-v" }
+    local found_extras = {}
+
+    for _, flag in ipairs(extra_flags) do
+        -- Use 2>/dev/null to silencing "illegal option" errors from the shell
+        local pf = io.popen("uname " .. flag .. " 2>/dev/null")
+        local output = pf:read("*a"):trim()
+        local ok = pf:close()
+
+        if ok and #output > 0 then
+            table.insert(found_extras, flag .. ": " .. output)
+        end
+    end
+
+    if #found_extras > 0 then
+        notice("Extended metadata found: " .. table.concat(found_extras, " | "))
+    end
 end)
 
 test("sleep: duration check", function()
