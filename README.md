@@ -1,16 +1,16 @@
-openKayoko
+Kayoko
 ======
 
-openKayoko is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
+Kayoko is a POSIX-compliant, fast, secure, and highly portable Unix-like operating system.
 
 Binaries
 --------
-- [Releases](https://cdn.openKayoko.net/releases/latest)
+- [Releases](https://cdn.Kayoko.net/releases/latest)
 
 Testing
 -------
 
-On a running openKayoko system:
+On a running Kayoko system:
 
     make -C /usr/tests [posix|sus|legal] 
 
@@ -20,8 +20,8 @@ Legal
 
 LICENSE GRANT
 -------------
-The openKayoko Project ("Licensor") grants to the person or entity ("Licensee") 
-a non-exclusive, non-transferable sublicense to use the openKayoko 
+The Kayoko Project ("Licensor") grants to the person or entity ("Licensee") 
+a non-exclusive, non-transferable sublicense to use the Kayoko 
 Operating System and associated utilities (the "Software") solely on 
 a single Designated Central Processing Unit (CPU) owned or leased 
 by Licensee.
