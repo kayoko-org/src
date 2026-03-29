@@ -139,6 +139,19 @@ end
 tasks["coreutils"] = function()
     print("==> Building Kayoko Core & Admin Utils")
 
+ 
+     -- 1. PREPARATION: Ensure the Kayoko skeleton exists
+    local dirs = {
+        "/bin", "/sbin", "/usr/bin", "/usr/sbin",
+        "/usr/share/man/man1", 
+        "/usr/share/man/html1"
+    }
+    
+    for _, dir in ipairs(dirs) do
+        -- Use mkdir -p to silently ensure the path exists in the root prefix
+        os.execute(string.format("mkdir -p %s%s", cfg.root, dir))
+    end
+    -- Define specific install locations to override the /usr/bin default
     local path_map = {
         ls = "/bin/", cp = "/bin/", mv = "/bin/", rm = "/bin/",
         cat = "/bin/", echo = "/bin/", pwd = "/bin/", mkdir = "/bin/",
@@ -149,6 +162,7 @@ tasks["coreutils"] = function()
     local function compile_util(src, bin, extra_ld)
         if needs_update(src, bin) then
             print(string.format("[CC] %s -> %s", src, bin:gsub(cfg.root, "")))
+            -- Kayoko defaults: Static, stripped, and linked against libutil
             local cmd = string.format("cc -I%s/include -O2 -static -s -o %s %s %s -lutil %s",
                 cfg.inst, bin, src, os.getenv("LDFLAGS") or "", extra_ld or "")
             if not os.execute(cmd) then
@@ -158,44 +172,54 @@ tasks["coreutils"] = function()
         end
     end
 
-    -- Process each category (core, adm, textproc, etc.)
     local categories = {"core", "adm", "textproc"}
     for _, cat in ipairs(categories) do
         local base_dir = "src/cmd/" .. cat
-        -- Find all subdirectories or files in this category
         local handle = io.popen("ls -F " .. base_dir .. " 2>/dev/null")
+        
         if handle then
             for entry in handle:lines() do
                 if entry:match("/$") then
                     -- STRUCTURED: Entry is a directory (e.g., textproc/ed/)
-                    local name = entry:sub(1, -2)
+                    local name = entry:sub(1, -2) -- Strip trailing slash for map lookup
                     local subdir = base_dir .. "/" .. name
-                    
+                    local target_dir = path_map[name] or "/usr/bin/"
+
                     if io.open(subdir .. "/Makefile", "r") then
                         print(string.format("[MAKE] %s", subdir))
-                        -- We use -C to change directory and pass the root as an environment var
-                        local make_cmd = string.format("make -C %s BINDIR=%s%s", 
-                            subdir, cfg.root, path_map[name] or "/usr/bin/")
                         
+                        -- Pass BINDIR for the internal path and DESTDIR for the physical root
+                        -- Ensure no double slashes or nil strings occur during concat
+                        local make_cmd = string.format("make -C %s BINDIR=%s DESTDIR=%s install",
+                            subdir, target_dir, cfg.root)
+
                         if not os.execute(make_cmd) then
                             print("[!] Make failed in " .. subdir)
                             os.exit(1)
                         end
                     end
+
                 elseif entry:match("%.c$") then
                     -- UNSTRUCTURED: Entry is a loose .c file (e.g., core/ls.c)
                     local name = entry:match("([^/]+)%.c$")
-                    local dir = path_map[name] or "/usr/bin/"
-                    compile_util(base_dir .. "/" .. entry, cfg.root .. dir .. name)
+                    local target_dir = path_map[name] or "/usr/bin/"
+                    
+                    -- Ensure target directory exists in the Kayoko root
+                    os.execute("mkdir -p " .. cfg.root .. target_dir)
+                    
+                    compile_util(base_dir .. "/" .. entry, cfg.root .. target_dir .. name)
                 end
             end
             handle:close()
         end
     end
 
-    -- Special handling for files with unique flags that remain unstructured
-    sh("chflags schg " .. cfg.root .. "/sbin/login")
+    -- Final hardening for the Kayoko environment
+    print("--> Setting system immutable flags")
+    os.execute("chflags schg " .. cfg.root .. "/sbin/login")
+    
 end
+
 
 tasks["kernel"] = function()
     print("==> Building Kayoko Kernel [%s]", cfg.kernel)
