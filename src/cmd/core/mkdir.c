@@ -62,18 +62,26 @@ static int mkpath(char *path, mode_t mode) {
     for (p = path + 1; *p; p++) {
         if (*p == '/') {
             *p = '\0';
-            if (stat(path, &sb) != 0) {
-                if (mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) != 0 && errno != EEXIST) {
-                    perror(path);
-                    return -1;
-                }
+            /* Intermediate dirs: POSIX says rwxrwxrwx & ~umask */
+            if (mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) != 0 && errno != EEXIST) {
+                perror(path);
+                return -1;
             }
             *p = '/';
         }
     }
-    if (mkdir(path, mode) != 0 && errno != EEXIST) {
-        perror(path);
-        return -1;
+
+    /* Final component */
+    if (mkdir(path, mode) != 0) {
+        if (errno != EEXIST) {
+            perror(path);
+            return -1;
+        }
+        /* If EEXIST, POSIX requires we verify it is actually a directory */
+        if (stat(path, &sb) != 0 || !S_ISDIR(sb.st_mode)) {
+            fprintf(stderr, "mkdir: %s: File exists\n", path);
+            return -1;
+        }
     }
     return 0;
 }
