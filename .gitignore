@@ -1,6 +1,11 @@
 inst/
 root/
 src/cmd/textproc/ed/ed
+src/cmd/textproc/sed/sed
+src/cmd/textproc/sed/sed.o
+src/cmd/textproc/sed/.gdbinit
+src/cmd/textproc/sed/*.html1
+src/cmd/textproc/sed/*.html
 src/cmd/textproc/ed/*.html
 src/cmd/textproc/ed/*.html1
 src/cmd/textproc/ed/.gdbinit

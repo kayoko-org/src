@@ -1,0 +1,76 @@
+.Dd March 29, 2026
+.Dt SED 1
+.Os Kayoko
+.Sh NAME
+.Nm sed
+.Nd stream editor
+.Sh SYNOPSIS
+.Nm
+.Op Fl n
+.Ar script
+.Op Ar file ...
+.Sh DESCRIPTION
+The
+.Nm
+utility is a stream editor that reads the specified
+.Ar file
+arguments (or standard input if none are given) and parses them according to a 
+list of commands in the
+.Ar script .
+.Pp
+The
+.Nm
+utility operates by maintaining a
+.Em pattern space :
+a buffer containing the current line being processed. The
+.Ar script
+is applied to the pattern space, and the resulting content is printed to 
+standard output unless the
+.Fl n
+option is specified.
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl n
+Suppress the default output. Only lines explicitly addressed by a
+.Ic p
+command or modified by an
+.Ic s
+command with a print flag will be output.
+.El
+.Sh ADDRESSING
+Commands within the
+.Ar script
+may be preceded by an address or a range of addresses. If no address is 
+specified, the command is applied to every line.
+.Bl -tag -width "addr1,addr2"
+.It Ar n
+Matches the n-th line of the input stream.
+.It Ar addr1 , addr2
+Matches a range of lines from
+.Ar addr1
+to
+.Ar addr2
+inclusive.
+.El
+.Sh COMMANDS
+The following commands are currently supported:
+.Bl -tag -width indent
+.It (addr1,addr2) Ic d
+Delete the pattern space and immediately start the next cycle.
+.It (addr1,addr2) Ic p
+Print the pattern space to standard output.
+.It (addr1,addr2) Ic s/re/replacement/g
+Substitute
+.Ar replacement
+for the regular expression
+.Ar re
+in the pattern space. The
+.Ic g
+suffix indicates that all occurrences of the expression should be replaced.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr ed 1 ,
+.Xr grep 1 ,
+.Xr regex 7
