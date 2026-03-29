@@ -1,5 +1,10 @@
 inst/
 root/
+*.o
+*.so
+*.a
+*.out
+*.shlib
 src/kat/amd64/
 src/kat/i386/
 src/kat/kat

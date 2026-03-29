@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="../style.css" type="text/css" media="all"/>
+  <title>ED(1)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ED(1)</td>
+    <td class="head-vol">General Commands Manual</td>
+    <td class="head-rtitle">ED(1)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp"><code class="Nm">ed</code> &#x2014; <span class="Nd">the standard
+    line-oriented text editor</span></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<table class="Nm">
+  <tr>
+    <td><code class="Nm">ed</code></td>
+    <td>[<code class="Fl">-p</code> <var class="Ar">prompt</var>]
+      [<var class="Ar">file</var>]</td>
+  </tr>
+</table>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESCRIPTION"><a class="permalink" href="#DESCRIPTION">DESCRIPTION</a></h1>
+<p class="Pp">The <code class="Nm">ed</code> utility is a line-oriented text
+    editor. It operates in two modes:
+    <a class="permalink" href="#command"><i class="Em" id="command">command
+    mode</i></a> and
+    <a class="permalink" href="#input"><i class="Em" id="input">input
+    mode</i></a>. In command mode, <code class="Nm">ed</code> reads commands
+    from standard input and executes them to manipulate the contents of a
+    buffer. When in input mode, <code class="Nm">ed</code> appends text to the
+    buffer.</p>
+<p class="Pp">If a <var class="Ar">file</var> argument is given,
+    <code class="Nm">ed</code> simulates an <code class="Ic">e</code> command on
+    the file before reading commands from standard input.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ADDRESSING"><a class="permalink" href="#ADDRESSING">ADDRESSING</a></h1>
+<p class="Pp">Commands operate on zero, one, or two addresses. A address
+    represents a line number in the buffer.</p>
+<dl class="Bl-tag">
+  <dt>.</dt>
+  <dd>The current line (dot).</dd>
+  <dt id="$"><a class="permalink" href="#$"><code class="Li">$</code></a></dt>
+  <dd>The last line in the buffer.</dd>
+  <dt id="n"><a class="permalink" href="#n"><code class="Li">n</code></a></dt>
+  <dd>The n-th line in the buffer.</dd>
+  <dt id="'x"><a class="permalink" href="#'x"><code class="Li">'x</code></a></dt>
+  <dd>The line marked with the character <var class="Ar">x</var> via the
+      <code class="Ic">k</code> command.</dd>
+  <dt id="+n"><a class="permalink" href="#+n"><code class="Li">+n</code></a>,
+    <code class="Li">-n</code></dt>
+  <dd>Relative offset of <var class="Ar">n</var> lines from the preceding
+      address.</dd>
+  <dt>,</dt>
+  <dd>Equivalent to <code class="Li">1,$</code>.</dd>
+  <dt>;</dt>
+  <dd>Equivalent to <code class="Li">.,$</code>, but sets dot to the first
+      address before calculating the second.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMMANDS"><a class="permalink" href="#COMMANDS">COMMANDS</a></h1>
+<p class="Pp"><code class="Nm">ed</code> supports the following commands:</p>
+<dl class="Bl-tag">
+  <dt>(addr) <code class="Ic">a</code></dt>
+  <dd>Append text after the addressed line. Input is terminated by a single
+      period on a line.</dd>
+  <dt>(addr1,addr2) <code class="Ic">d</code></dt>
+  <dd>Delete the addressed lines. Dot is set to the line following the deleted
+      range.</dd>
+  <dt id="h"><a class="permalink" href="#h"><code class="Ic">h</code></a></dt>
+  <dd>Print the last error message.</dd>
+  <dt id="H"><a class="permalink" href="#H"><code class="Ic">H</code></a></dt>
+  <dd>Toggle the automatic printing of error messages.</dd>
+  <dt>(addr1,addr2) <code class="Ic">j</code></dt>
+  <dd>Join the addressed lines into a single line.</dd>
+  <dt>(addr) <code class="Ic">k</code> <var class="Ar">x</var></dt>
+  <dd>Mark the addressed line with the character <var class="Ar">x</var>.</dd>
+  <dt>(addr1,addr2) <code class="Ic">n</code></dt>
+  <dd>Print the addressed lines prefixed by their line numbers and a tab.</dd>
+  <dt>(addr1,addr2) <code class="Ic">p</code></dt>
+  <dd>Print the addressed lines.</dd>
+  <dt id="P"><a class="permalink" href="#P"><code class="Ic">P</code></a></dt>
+  <dd>Toggle the command prompt character.</dd>
+  <dt id="q"><a class="permalink" href="#q"><code class="Ic">q</code></a></dt>
+  <dd>Quit <code class="Nm">ed</code>. If the buffer has been modified since the
+      last write, a warning is issued.</dd>
+  <dt>(addr1,addr2) <code class="Ic">s/re/replacement/g</code></dt>
+  <dd>Substitute <var class="Ar">replacement</var> for the regular expression
+      <var class="Ar">re</var> in the addressed lines.</dd>
+  <dt>(addr1,addr2) <code class="Ic">w</code> [<var class="Ar">file</var>]</dt>
+  <dd>Write the addressed lines to <var class="Ar">file</var>.</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ERRORS"><a class="permalink" href="#ERRORS">ERRORS</a></h1>
+<p class="Pp">When an error occurs, <code class="Nm">ed</code> prints a
+    &#x2018;<code class="Li"></code>&#x2019;? and returns to command mode. The
+    <code class="Ic">h</code> command can be used to view the specific
+  error.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SEE_ALSO"><a class="permalink" href="#SEE_ALSO">SEE
+  ALSO</a></h1>
+<p class="Pp"><a class="Xr" href="../html1/cat.html">cat(1)</a>,
+    <a class="Xr" href="../html1/vi.html">vi(1)</a>,
+    <a class="Xr" href="../html7/regex.html">regex(7)</a></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">March 28, 2026</td>
+    <td class="foot-os">Kayoko</td>
+  </tr>
+</table>
+</body>
+</html>

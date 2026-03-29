@@ -142,39 +142,59 @@ tasks["coreutils"] = function()
     local path_map = {
         ls = "/bin/", cp = "/bin/", mv = "/bin/", rm = "/bin/",
         cat = "/bin/", echo = "/bin/", pwd = "/bin/", mkdir = "/bin/",
-        sh = "/bin/", date = "/bin/", chmod = "/bin/", hostname = "/bin/"
+        sh = "/bin/", date = "/bin/", chmod = "/bin/", hostname = "/bin/",
+        ed = "/bin/", login = "/sbin/", smat = "/sbin/", lsdsk = "/bin/"
     }
 
     local function compile_util(src, bin, extra_ld)
         if needs_update(src, bin) then
-            -- Print custom [CC] format
             print(string.format("[CC] %s -> %s", src, bin:gsub(cfg.root, "")))
-            
             local cmd = string.format("cc -I%s/include -O2 -static -s -o %s %s %s -lutil %s",
                 cfg.inst, bin, src, os.getenv("LDFLAGS") or "", extra_ld or "")
-            
-            local success = os.execute(cmd)
-            if not success then
-                print("\n[!] Compilation failed for " .. src .. "")
+            if not os.execute(cmd) then
+                print("\n[!] Compilation failed for " .. src)
                 os.exit(1)
             end
         end
     end
 
-    local handle = io.popen("ls src/cmd/core/*.c 2>/dev/null")
-    if handle then
-        for src in handle:lines() do
-            local name = src:match("([^/]+)%.c$")
-            local dir = path_map[name] or "/usr/bin/"
-            compile_util(src, cfg.root .. dir .. name)
+    -- Process each category (core, adm, textproc, etc.)
+    local categories = {"core", "adm", "textproc"}
+    for _, cat in ipairs(categories) do
+        local base_dir = "src/cmd/" .. cat
+        -- Find all subdirectories or files in this category
+        local handle = io.popen("ls -F " .. base_dir .. " 2>/dev/null")
+        if handle then
+            for entry in handle:lines() do
+                if entry:match("/$") then
+                    -- STRUCTURED: Entry is a directory (e.g., textproc/ed/)
+                    local name = entry:sub(1, -2)
+                    local subdir = base_dir .. "/" .. name
+                    
+                    if io.open(subdir .. "/Makefile", "r") then
+                        print(string.format("[MAKE] %s", subdir))
+                        -- We use -C to change directory and pass the root as an environment var
+                        local make_cmd = string.format("make -C %s BINDIR=%s%s", 
+                            subdir, cfg.root, path_map[name] or "/usr/bin/")
+                        
+                        if not os.execute(make_cmd) then
+                            print("[!] Make failed in " .. subdir)
+                            os.exit(1)
+                        end
+                    end
+                elseif entry:match("%.c$") then
+                    -- UNSTRUCTURED: Entry is a loose .c file (e.g., core/ls.c)
+                    local name = entry:match("([^/]+)%.c$")
+                    local dir = path_map[name] or "/usr/bin/"
+                    compile_util(base_dir .. "/" .. entry, cfg.root .. dir .. name)
+                end
+            end
+            handle:close()
         end
-        handle:close()
     end
 
-    compile_util("src/cmd/adm/login.c",  cfg.root .. "/sbin/login", "-lcrypt")
+    -- Special handling for files with unique flags that remain unstructured
     sh("chflags schg " .. cfg.root .. "/sbin/login")
-    compile_util("src/cmd/adm/smat.c", cfg.root .. "/sbin/smat", "-lcurses -lterminfo -llua -I/usr/include/lua5.3 -lm")
-    compile_util("src/cmd/adm/lsdsk.c",  cfg.root .. "/bin/lsdsk", "-lprop")
 end
 
 tasks["kernel"] = function()

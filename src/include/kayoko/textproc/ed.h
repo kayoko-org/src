@@ -29,7 +29,7 @@ typedef struct {
     char *last_re;
     char *rhs;
     char *last_err;
-    
+
     /* Performant Undo */
     Line *u_lines;
     size_t u_count, u_cap;
