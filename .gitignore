@@ -1,5 +1,9 @@
 inst/
 root/
+src/cmd/textproc/ed/ed
+src/cmd/textproc/ed/*.html
+src/cmd/textproc/ed/*.html1
+src/cmd/textproc/ed/.gdbinit
 *.o
 *.so
 *.a
