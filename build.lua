@@ -173,7 +173,7 @@ tasks["coreutils"] = function()
 
     compile_util("src/cmd/adm/login.c",  cfg.root .. "/sbin/login", "-lcrypt")
     sh("chflags schg " .. cfg.root .. "/sbin/login")
-    compile_util("src/cmd/adm/sysmgr.c", cfg.root .. "/sbin/sysmgr", "-lcurses -lterminfo")
+    compile_util("src/cmd/adm/smat.c", cfg.root .. "/sbin/smat", "-lcurses -lterminfo -llua -I/usr/include/lua5.3 -lm")
     compile_util("src/cmd/adm/lsdsk.c",  cfg.root .. "/bin/lsdsk", "-lprop")
 end
 
