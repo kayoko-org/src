@@ -1,0 +1,51 @@
+.Dd March 29, 2026
+.Dt MKDIR 1
+.Os Kayoko
+.Sh NAME
+.Nm mkdir
+.Nd make directories
+.Sh SYNOPSIS
+.Nm
+.Op Fl p
+.Op Fl m Ar mode
+.Ar directory ...
+.Sh DESCRIPTION
+The
+.Nm
+utility creates the directories named as operands, in the order specified,
+using the default mode
+.Dv rwxrwxrwx
+(0777) as modified by the current
+.Xr umask 2 .
+.Pp
+The following options are supported:
+.Bl -tag -width indent
+.It Fl m Ar mode
+Set the file permission bits of the newly-created directory to the specified
+.Ar mode .
+The
+.Ar mode
+argument can be in any format supported by the
+.Xr chmod 1
+command.
+.It Fl p
+Create intermediate directories as required.
+If an intermediate component already exists, it is not an error.
+Intermediate directories are created with a mode of
+.Dv rwxrwxrwx
+(0777) as modified by the current
+.Xr umask 2 ,
+with write and search permission added for the owner.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr chmod 1 ,
+.Xr mkdir 2 ,
+.Xr umask 2
+.Sh STANDARDS
+The
+.Nm
+utility is compliant with the
+.St -p1003.1
+specification.
