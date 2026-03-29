@@ -1,5 +1,5 @@
-#ifndef COMMANDS_H
-#define COMMANDS_H
+#ifndef KAYOKO_TEXTPROC_COMMANDS_H
+#define KAYOKO_TEXTPROC_COMMANDS_H
 
 #include <kayoko/textproc/ed.h>
 

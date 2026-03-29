@@ -1,5 +1,5 @@
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef KAYOKO_TEXTPROC_BUFFER_H
+#define KAYOKO_TEXTPROC_BUFFER_H
 
 #include <kayoko/textproc/ed.h>
 

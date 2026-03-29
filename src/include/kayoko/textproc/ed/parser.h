@@ -1,5 +1,5 @@
-#ifndef PARSER_H
-#define PARSER_H
+#ifndef KAYOKO_TEXTPROC_PARSER_H
+#define KAYOKO_TEXTPROC_PARSER_H
 
 #include <kayoko/textproc/ed.h>
 
