@@ -62,7 +62,7 @@ test("id: user lookup", function()
 end)
 
 -- 5. Security Context (-Z)
-test("id: security context (-Z)", function()
+test("id: security context (-Z) (extended)", function()
     -- Common extension for SELinux (GNU) or MAC (BSD/Darwin)
     local f = io.popen("id -Z 2>/dev/null")
     local res = f:read("*a"):trim()

@@ -25,12 +25,32 @@ test("uname: basic output & extended flags", function()
     end
 end)
 
-test("sleep: duration check", function()
+test("sleep: standard integer duration", function()
+    -- POSIX strictly requires supporting integer seconds
     local start = os.time()
     local ok = os.execute("sleep 1")
     local elapsed = os.time() - start
-    assert(ok, "sleep command failed")
-    assert(elapsed >= 1, "sleep did not pause for long enough")
+    
+    assert(ok, "Standard sleep 1 failed to execute")
+    assert(elapsed >= 1, "Standard sleep did not pause for at least 1 second")
+    -- If we reach here, lpts.lua will automatically print [PASS]
+end)
+
+test("sleep: decimal duration support (extended)", function()
+    -- This is a non-POSIX extension (common in GNU/BSD)
+    -- We use a small decimal to probe for support
+    local start = os.clock()
+    local status = os.execute("sleep 0.2 2>/dev/null")
+    local elapsed = os.clock() - start
+
+    -- Check if it exited 0 AND actually paused for a short duration
+    -- (We use 0.1 as a threshold to account for process overhead)
+    if (status == true or status == 0) and elapsed >= 0.1 then
+        notice("Decimal durations supported (e.g., sleep 0.2)")
+    else
+        -- If it fails, we do nothing. 
+        -- This test will simply show as [PASS] without the NOTE.
+    end
 end)
 
 test("kill: signal 0 (existence check)", function()
