@@ -16,7 +16,7 @@ Testing
 
 On a running Kayoko system:
 
-    make -C /usr/tests [posix|sus|legal] 
+    make -C /usr/tests 
 
 
 Legal
