@@ -1,4 +1,4 @@
-.Dd March 28, 2026
+.Dd March 29, 2026
 .Dt KATADM 8
 .Os Kayoko
 .Sh NAME
@@ -6,29 +6,58 @@
 .Nd administrative tool for the Kernel Access Table
 .Sh SYNOPSIS
 .Nm
-.Cm load | clear | status
+.Cm load | clear | status | list
 .Sh DESCRIPTION
 The
 .Nm
-utility manages the rules within the KAT kernel module. 
-Rules are typically read from
-.Pa /etc/kat.conf .
+utility manages the security rules within the KAT kernel module. 
+It translates human-readable configurations into bitmasks and uploads them to
+.Pa /dev/kat .
 .Bl -tag -width indent
 .It Cm load
 Parses
-.Pa /etc/kat.conf
-and uploads rules to the kernel via
-.Pa /dev/kat .
+.Pa /etc/kat.conf ,
+clears the existing kernel table, and uploads new rules.
 .It Cm clear
-Flushes all rules from the kernel's in-memory table.
+Flushes all rules from the kernel's in-memory table, effectively 
+reverting the system to default kernel security.
 .It Cm status
-Displays the number of active rules currently enforced by the kernel.
+Displays a summary of the number of active rules currently enforced.
+.It Cm list
+Provides a formatted table of all active rules, including UIDs, 
+hexadecimal privilege masks, and target paths.
+.El
+.Sh CONFIGURATION SYNTAX
+Rules in
+.Pa /etc/kat.conf
+follow a three-column format:
+.Pp
+.Dl "IDENTITY    PATH    PRIVILEGE"
+.Bl -tag -width indent
+.It Sy IDENTITY
+Can be a username, a numeric UID, or a group name prefixed with 
+.Sq % .
+Groups are expanded to their constituent members at load time.
+.It Sy PATH
+The absolute path to a binary. Use 
+.Sq * for a global rule that applies regardless of the executed binary.
+.It Sy PRIVILEGE
+A pipe-separated list of keywords (e.g., 
+.Li sys.reboot|net.bind ) .
+If prefixed with 
+.Sq ! ,
+the rule becomes a 
+.Em restriction 
+rather than an allowance.
 .El
 .Sh FILES
 .Bl -tag -width "/etc/kat.conf" -compact
 .It Pa /etc/kat.conf
-The default configuration file. Format is
-.Li uid:path:privmask .
+The default policy file. Supports 
+.Li -- 
+style comments.
+.It Pa /dev/kat
+The character device interface for kernel communication.
 .El
 .Sh SEE ALSO
 .Xr kat 1 ,
