@@ -10,7 +10,7 @@ tasks = {
 
     -- SECTION: STORAGE & DISKS
     { label = "Storage & Filesystems...", submenu = {
-        { label = "List Partitions (lsblk)", cmd = "lsblk",            input = false },
+        { label = "List Partitions", cmd = "lsdsk",            input = false },
         { label = "Disk Usage (df -h)",      cmd = "df -h",             input = false },
         { label = "Check Filesystem (fsck)", cmd = "fsck -y %s",        input = true,  prompt = "Device (e.g. /dev/ada0p2): " },
         { label = "List Mounted FS",         cmd = "mount",             input = false },
