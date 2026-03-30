@@ -3,6 +3,8 @@ root/
 src/cmd/textproc/ed/ed
 src/cmd/textproc/sed/sed
 src/cmd/textproc/more/more
+src/cmd/dev/make/make
+src/cmd/dev/make/test/
 src/cmd/textproc/more/.gdbinit
 src/cmd/textproc/more/*.html
 src/cmd/textproc/more/*.html1

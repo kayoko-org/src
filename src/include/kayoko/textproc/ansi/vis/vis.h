@@ -22,9 +22,9 @@ void kayoko_vis(FILE *fp) {
         } else {
             /* The classic BSD/C-style escape logic */
             switch (ch) {
-                case '\n': fputs("\\n", stdout); break;
-                case '\r': fputs("\\r", stdout); break;
-                case '\t': fputs("\\t", stdout); break;
+                case '\r': fputs("\r", stdout); break;
+                case '\n': fputs("\n", stdout); break;
+                case '\t': fputs("\t", stdout); break;
                 case '\a': fputs("\\a", stdout); break;
                 case '\b': fputs("\\b", stdout); break;
                 case '\v': fputs("\\v", stdout); break;
