@@ -1,0 +1,71 @@
+.Dd March 30, 2026
+.Dt AR 1
+.Os Kayoko
+.Sh NAME
+.Nm ar
+.Nd create and maintain library archives
+.Sh SYNOPSIS
+.Nm
+.Fl r
+.Ar archive
+.Ar file ...
+.Nm
+.Fl t
+.Ar archive
+.Nm
+.Fl x
+.Ar archive
+.Sh DESCRIPTION
+The
+.Nm
+utility creates and maintains groups of files combined into a single
+archive file.
+Its primary use is the creation and update of static libraries used by
+the link editor.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl r
+Replace or add
+.Ar file
+to
+.Ar archive .
+If the archive does not exist, it is created with the standard
+.Li !<arch>\en
+header.
+If a file with the same name already exists in the archive, it is replaced;
+otherwise, it is appended to the end of the archive.
+.It Fl t
+List the names of the files present in
+.Ar archive
+to standard output.
+.It Fl x
+Extract all members from
+.Ar archive
+into the current working directory.
+Existing files with the same name are overwritten.
+.El
+.Sh IMPLEMENTATION NOTES
+The
+.Nm
+utility follows the
+.St -p1003.1
+standard for archive formats.
+Each member is preceded by a 60-byte ASCII header.
+To maintain alignment, a newline character
+.Pq Li \en
+is inserted as padding after any member with an odd-sized byte count.
+This padding is not reflected in the size field of the member header.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Create a static library from object files:
+.Pp
+.Dl $ ar -r libutil.a parse.o network.o
+.Pp
+List the contents of an archive:
+.Pp
+.Dl $ ar -t libutil.a
+.Sh SEE ALSO
+.Xr ld 1 ,
+.Xr stat 2
