@@ -3,7 +3,6 @@
 local os = require("os")
 local io = require("io")
 
--- --- 1. UI Configuration (Strict BSD: Bold, Dim, Red Only) ---
 -- --- 1. UI Configuration & Color Handling ---
 local ui = {
     bold  = "\27[1m",
@@ -184,7 +183,7 @@ tasks["coreutils"] = function()
         if needs_update(src, bin) then
             local libs = special_libs[name] or ""
             local ldflags = string.format("-lutil -lm %s", libs)
-            sh(string.format("cc -I%s/include -O2 -static -s -o %s %s %s %s", 
+            sh(string.format("cc -Isrc/include -I%s/include -O2 -static -s -o %s %s %s %s", 
                 cfg.inst, bin, src, ldflags, extra_ld or ""))
         end
     end

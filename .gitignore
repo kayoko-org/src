@@ -21,4 +21,5 @@ src/cmd/textproc/ed/ed
 src/cmd/textproc/vis/vis
 src/cmd/textproc/more/more
 src/cmd/files/needsupdate/needsupdate
+src/cmd/files/pax/pax
 src/cmd/dev/ar/ar

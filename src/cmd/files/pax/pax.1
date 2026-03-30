@@ -1,0 +1,116 @@
+.Dd March 30, 2026
+.Dt PAX 1
+.Os Kayoko
+.Sh NAME
+.Nm pax ,
+.Nm tar ,
+.Nm cpio
+.Nd portable archive interchange and multicall archiving utility
+.Sh SYNOPSIS
+.Nm pax
+.Op Fl rwv
+.Op Fl f Ar archive
+.Op Fl x Ar format
+.Op Ar pattern ...
+.Nm tar
+.Op Fl cvf Ar archive
+.Op Ar file ...
+.Nm cpio
+.Fl o | i
+.Op Fl v
+.Sh DESCRIPTION
+The
+.Nm
+utility shall list, read, or write archive files, or copy directory
+hierarchies.
+.Pp
+When invoked as
+.Nm tar
+or
+.Nm cpio
+via symbolic links, the utility provides a simplified interface compatible with
+those traditional archivers.
+.Pp
+The following options are supported for
+.Nm pax :
+.Bl -tag -width indent
+.It Fl r
+Read an archive file. If
+.Fl w
+is also specified, enter copy mode.
+.It Fl w
+Write files to an archive.
+.It Fl v
+Verbose mode. List filenames as they are processed.
+.It Fl f Ar archive
+Specify the pathname of the input or output archive. If not specified,
+standard input or output is used.
+.It Fl x Ar format
+Specify the output archive format. The formats supported are
+.Sy ustar
+(default POSIX tar) and
+.Sy cpio
+(SVR4 new ASCII).
+.El
+.Sh OPERANDS
+The
+.Nm pax
+utility supports four modes of operation:
+.Bl -bullet
+.It
+.Sy List :
+Neither
+.Fl r
+nor
+.Fl w
+are specified.
+.It
+.Sy Read :
+.Fl r
+is specified, but
+.Fl w
+is not.
+.It
+.Sy Write :
+.Fl w
+is specified, but
+.Fl r
+is not.
+.It
+.Sy Copy :
+Both
+.Fl r
+and
+.Fl w
+are specified.
+.El
+.Sh COMPATIBILITY
+When invoked as
+.Nm tar :
+.Bl -tag -width indent
+.It Fl c
+Create a new
+.Sy ustar
+format archive.
+.It Fl x
+Extract from an archive (default behavior if -c is absent).
+.El
+.Pp
+When invoked as
+.Nm cpio :
+.Bl -tag -width indent
+.It Fl o
+Output mode. Read a list of pathnames from standard input and create a
+.Sy cpio
+format archive.
+.It Fl i
+Input mode. Extract files from a
+.Sy cpio
+archive provided on standard input.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr cpio 1 ,
+.Xr tar 1 ,
+.Xr zlib 3
