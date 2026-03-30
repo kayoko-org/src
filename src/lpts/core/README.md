@@ -3,13 +3,15 @@ Lua POSIX Test Suite
 
 Format
 ------
-On extended checks, NOTICE means it HAS it. PASS means it does NOT have it.
+- NOTICE is well.. a notice?
 
-FAIL means it failed (duh!).
+- On extended checks, EXTD means it HAS a extended feature, while PASS means it does NOT.
 
-PASS means it passed 100%.
+- FAIL means it failed (duh!).
 
-PARTIAL means it partially passed.
+- PASS means it passed 100%.
+
+- PARTIAL means it partially passed.
 
 Usage
 -----
