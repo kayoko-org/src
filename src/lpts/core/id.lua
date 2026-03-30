@@ -3,9 +3,8 @@ test("id: default output format", function()
     local f = io.popen("id")
     local res = f:read("*a")
     f:close()
-    
+
     -- POSIX format: uid=number(name) gid=number(name) groups=...
-    -- We use a pattern that allows for underscores and dashes in names
     local pattern = "uid=%d+%(%w[%w%-_%.]*%)"
     if not res:match(pattern) then
         -- If it's missing the name mapping but has the number, it's partial
@@ -44,13 +43,12 @@ test("id: group list and names", function()
     f_gn:close()
 
     if res_gn ~= "" and not res_gn:match("^%d+") then
-        notice("Extended flag -n (names) supported")
+        extended("Flag -n (names) supported")
     end
 end)
 
 -- 4. User lookup (id [user])
 test("id: user lookup", function()
-    -- Standard POSIX: id [user] should work
     local f = io.popen("id root 2>/dev/null")
     local res = f:read("*a")
     f:close()
@@ -63,15 +61,12 @@ end)
 
 -- 5. Security Context (-Z)
 test("id: security context (-Z) (extended)", function()
-    -- Common extension for SELinux (GNU) or MAC (BSD/Darwin)
     local f = io.popen("id -Z 2>/dev/null")
     local res = f:read("*a"):trim()
     f:close()
 
     if res ~= "" then
-        notice("Security context (" .. res .. ") supported via -Z")
-    else
-        -- Don't notice if missing, as per instructions
+        extended("Security context (" .. res .. ") supported via -Z")
     end
 end)
 
@@ -80,7 +75,7 @@ test("id: single category flags", function()
     local f = io.popen("id -g")
     local res = f:read("*a"):trim()
     f:close()
-    
+
     -- Must be numeric by default
     if not res:match("^%d+$") then
         if res == "" then error("id -g returned no output") end
