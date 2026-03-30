@@ -1,0 +1,64 @@
+.Dd March 30, 2026
+.Dt NEEDSUPDATE 1
+.Os Kayoko
+.Sh NAME
+.Nm needsupdate
+.Nd determine if a target file is out of date
+.Sh SYNOPSIS
+.Nm needsupdate
+.Ar source
+.Ar target
+.Sh DESCRIPTION
+The
+.Nm needsupdate
+utility compares the modification times of a
+.Ar source
+file and a
+.Ar target
+file to determine if the target needs to be rebuilt or updated.
+.Pp
+If
+.Ar source
+is newer than
+.Ar target ,
+or if
+.Ar target
+does not exist, the utility considers an update necessary.
+.Pp
+This is designed for use in shell scripts and build systems (like
+.Xr build.lua 8 )
+to avoid redundant compilation or processing steps.
+.Sh EXIT STATUS
+The
+.Nm needsupdate
+utility exits with one of the following values:
+.Bl -tag -width indent
+.It 0
+The
+.Ar target
+is up to date (equal to or newer than
+.Ar source ) .
+.It 1
+The
+.Ar target
+needs an update (older than
+.Ar source
+or missing).
+.It 2
+An error occurred, such as the
+.Ar source
+file not being found or insufficient permissions.
+.El
+.Sh EXAMPLES
+Check if a C source file has changed since the last build:
+.Pp
+.Dl $ needsupdate main.c main.o && cc -c main.c -o main.o
+.Pp
+Usage within a script to gate a slow process:
+.Pp
+.Dl if needsupdate data.raw data.cache; then
+.Dl 	generate_cache data.raw > data.cache
+.Dl fi
+.Sh SEE ALSO
+.Xr stat 2 ,
+.Xr build.lua 8
