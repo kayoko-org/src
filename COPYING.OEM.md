@@ -12,7 +12,7 @@ of a separate **Commercial Purchase Agreement** (the "Agreement") with
 The Kayoko Project, the Licensee is hereby granted a non-exclusive, 
 world-wide, sublicensable right to:
 
-* **Redistribute** and mirror the Software.
+* **Redistribute and mirror** the Software in **Compiled Binary Form only**.
 * **Copy** and install the Software on hardware for resale.
 * **Modify** the Software to create derivative works.
 * **Sell** the Software as a standalone product or as part of a 
@@ -24,7 +24,9 @@ world-wide, sublicensable right to:
 The grants listed in Section 1 are valid **ONLY IF** all of the 
 following conditions are met:
 
-* **Proof of Purchase**: The Licensee has entered into a formal, 
+* **Source Code Confidentiality**: The Licensee shall **not redistribute, publish, or otherwise disclose the Source Code of the Software to any third party**. The right to redistribute granted in Section 1 applies strictly to Machine-Readable Binaries.
+
+ **Proof of Purchase**: The Licensee has entered into a formal, 
     paid Agreement with The Kayoko Project and remains in good 
     financial standing regarding all associated fees.
 
