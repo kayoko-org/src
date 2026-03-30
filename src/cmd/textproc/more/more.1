@@ -1,0 +1,61 @@
+.Dd March 30, 2026
+.Dt MORE 1
+.Os Kayoko
+.Sh NAME
+.Nm more
+.Nd file perusal filter for crt viewing
+.Sh SYNOPSIS
+.Nm
+.Ar file
+.Sh DESCRIPTION
+The
+.Nm
+utility is a filter to allow examination of continuous text one
+screenful at a time.
+.Pp
+When 
+.Nm
+pauses, a footer is displayed at the bottom of the screen:
+.Pp
+.Dl \e033[7m-- More -- (XX%)\e033[0m
+.Pp
+Where XX% represents the current progress through the file.
+.Sh INTERACTIVE COMMANDS
+The following commands are available while pausing:
+.Bl -tag -width indent
+.It Ic <Space>
+Display the next screenful of text.
+.It Ic <Enter>
+Scroll forward one line.
+.It Ic /pattern
+Search forward for the next occurrence of
+.Ar pattern .
+The footer will change to a 
+.Li /
+prompt during input.
+.It Ic v , V
+Invoke 
+.Xr vi 1
+at the current line of the current file.
+.It Ic q , Q
+Exit the 
+.Nm
+utility.
+.It Ic ^C
+The interrupt signal is ignored by 
+.Nm
+to prevent accidental termination during perusal.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "COLUMNS"
+.It Ev COLUMNS
+Used to determine the width of the screen.
+.It Ev LINES
+Used to determine the number of lines to display per screenful.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr cat 1 ,
+.Xr vi 1 ,
+.Xr vis 1
