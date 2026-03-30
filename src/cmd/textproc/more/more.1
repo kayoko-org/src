@@ -2,24 +2,27 @@
 .Dt MORE 1
 .Os Kayoko
 .Sh NAME
-.Nm more
+.Nm more ,
+.Nm moar
 .Nd file perusal filter for crt viewing
 .Sh SYNOPSIS
 .Nm
-.Ar file
+.Op Ar file ...
 .Sh DESCRIPTION
 The
 .Nm
 utility is a filter to allow examination of continuous text one
 screenful at a time.
 .Pp
-When 
+If invoked as
+.Nm moar ,
+the utility enables enhanced interactive features, including backward
+scrolling and a terminal-clearing alternate screen buffer.
+.Pp
+When
 .Nm
-pauses, a footer is displayed at the bottom of the screen:
-.Pp
-.Dl \e033[7m-- More -- (XX%)\e033[0m
-.Pp
-Where XX% represents the current progress through the file.
+pauses, a footer is displayed at the bottom of the screen indicating
+the current progress through the file as a percentage.
 .Sh INTERACTIVE COMMANDS
 The following commands are available while pausing:
 .Bl -tag -width indent
@@ -27,27 +30,34 @@ The following commands are available while pausing:
 Display the next screenful of text.
 .It Ic <Enter>
 Scroll forward one line.
+.It Ic b , B
+Scroll backward one screenful.
+.Pq Er Moar mode only .
 .It Ic /pattern
 Search forward for the next occurrence of
 .Ar pattern .
-The footer will change to a 
+The footer will change to a
 .Li /
 prompt during input.
 .It Ic v , V
-Invoke 
-.Xr vi 1
-at the current line of the current file.
+Invoke the editor specified by the
+.Ev EDITOR
+environment variable (defaulting to
+.Xr vi 1 )
+at the current file.
 .It Ic q , Q
-Exit the 
+Exit the
 .Nm
 utility.
 .It Ic ^C
-The interrupt signal is ignored by 
-.Nm
-to prevent accidental termination during perusal.
+The interrupt signal is ignored to prevent accidental termination.
 .El
 .Sh ENVIRONMENT
-.Bl -tag -width "COLUMNS"
+.Bl -tag -width "EDITOR"
+.It Ev EDITOR
+Used by the
+.Ic v
+command to select an editor.
 .It Ev COLUMNS
 Used to determine the width of the screen.
 .It Ev LINES
@@ -57,5 +67,5 @@ Used to determine the number of lines to display per screenful.
 .Ex -std
 .Sh SEE ALSO
 .Xr cat 1 ,
-.Xr vi 1 ,
-.Xr vis 1
+.Xr less 1 ,
+.Xr vi 1
