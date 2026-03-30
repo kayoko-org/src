@@ -1,0 +1,20 @@
+-- more.luamk
+-- Build definition for 'more' utility
+
+local pkg = {
+    prog   = "more",
+    srcs   = { "src/more.c" },
+    man    = "more.1",
+    
+    -- Kayoko-specific flags
+    cflags = {
+        "-I../../../include",
+        "-Wall",
+        "-Wextra",
+        "-std=c99",
+        "-D_POSIX_C_SOURCE=200809L"
+    }
+}
+
+-- Return the table so build.lua can consume it
+return pkg

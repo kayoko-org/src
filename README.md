@@ -23,6 +23,10 @@ Building
 -------
     $ lua ./build.lua coreutils|kernel|init|base|branding
 
+To add color, you can use --color=always.
+
+To exclude certain things, use --without-thing
+
 Legal
 -----
 
