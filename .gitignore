@@ -4,6 +4,10 @@ src/cmd/textproc/ed/ed
 src/cmd/textproc/sed/sed
 src/cmd/textproc/sed/sed.o
 src/cmd/textproc/sed/.gdbinit
+src/cmd/textproc/vis/.gdbinit
+src/cmd/textproc/vis/.html1
+src/cmd/textproc/vis/.html
+src/cmd/textproc/vis/vis
 src/cmd/textproc/sed/*.html1
 src/cmd/textproc/sed/*.html
 src/cmd/textproc/ed/*.html
