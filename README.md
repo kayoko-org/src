@@ -22,4 +22,4 @@ On a running Kayoko system:
 Legal
 -----
 
-This project is licensed under the PolyForm Noncommercial License 1.0.0.
+This project is licensed under the PolyForm Noncommercial License 1.0.0. For OEM usage, please view COPYING-OEM.md.
