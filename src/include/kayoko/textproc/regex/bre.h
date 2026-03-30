@@ -4,51 +4,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <regex.h>
 #include <kayoko/textproc/ed/buffer.h>
 #include <kayoko/textproc/ed.h>
-#include <kayoko/textproc/ed/commands.h>
 
-/* * Standalone substitution logic for the ed editor.
- * Assumes Ed struct provides: lines[], last_re, rhs, curr, and dirty.
- */
+static inline void expand_rhs(char *buf, const char *rhs, const char *src, regmatch_t *pm) {
+    for (const char *r = rhs; *r; r++) {
+        if (*r == '&') {
+            strncat(buf, src + pm[0].rm_so, pm[0].rm_eo - pm[0].rm_so);
+        } else if (*r == '\\') {
+            r++;
+            if (isdigit(*r)) {
+                int n = *r - '0';
+                if (n < 10 && pm[n].rm_so != -1) {
+                    strncat(buf, src + pm[n].rm_so, pm[n].rm_eo - pm[n].rm_so);
+                }
+            } else {
+                strncat(buf, r, 1);
+            }
+        } else {
+            strncat(buf, r, 1);
+        }
+    }
+}
 
 static inline void do_sub(Ed *e, int a, int b, char *p) {
-    if (!p || *p == '\0') {
-        set_err(e, "invalid command");
-        return;
-    }
+    if (!p || *p == '\0') return;
 
     char delim = *p++;
     char *re_end = strchr(p, delim);
-    if (!re_end) { 
-        set_err(e, "delimiter mismatch"); 
-        return; 
-    }
+    if (!re_end) return;
 
-    // Extract pattern
     char *pat = strndup(p, re_end - p);
     regex_t re;
-    
     if (strlen(pat) == 0) {
-        if (!e->last_re || regcomp(&re, e->last_re, 0) != 0) {
-            set_err(e, "no prev re");
-            free(pat);
-            return;
-        }
+        if (!e->last_re || regcomp(&re, e->last_re, 0) != 0) { free(pat); return; }
     } else {
-        if (regcomp(&re, pat, 0) != 0) {
-            set_err(e, "bad re");
-            free(pat);
-            return;
-        }
+        if (regcomp(&re, pat, 0) != 0) { free(pat); return; }
         if (e->last_re) free(e->last_re);
         e->last_re = strdup(pat);
     }
     free(pat);
     p = re_end + 1;
 
-    // Extract replacement string (RHS)
     char *rhs_end = strchr(p, delim);
     if (rhs_end) {
         if (e->rhs) free(e->rhs);
@@ -56,38 +55,49 @@ static inline void do_sub(Ed *e, int a, int b, char *p) {
         p = rhs_end + 1;
     }
 
-    int global = (strchr(p, 'g') != NULL);
+    int global = 0, nth = 1;
+    char *temp_p = p;
+    while (*temp_p && !isspace(*temp_p)) {
+        if (*temp_p == 'g') global = 1;
+        else if (isdigit(*temp_p)) nth = (int)strtol(temp_p, &temp_p, 10);
+        else temp_p++;
+    }
 
-    // Process line range [a, b]
     for (int i = a; i <= b; i++) {
-	if (i < 1 || i > (int)e->count) continue;
+        if (i < 1 || i > (int)e->count) continue;
         char *src = e->lines[i-1].rs->data;
-        regmatch_t pm;
-        char buf[8192] = {0}; 
-        int off = 0, found = 0;
+        regmatch_t pm[10];
+        char buf[8192] = {0};
+        int off = 0, match_idx = 0, found = 0;
 
-        // Perform substitution
-        while (regexec(&re, src + off, 1, &pm, 0) == 0) {
+        while (regexec(&re, src + off, 10, pm, 0) == 0) {
+            match_idx++;
             found = 1;
-            // Append prefix
-            strncat(buf, src + off, pm.rm_so);
-            // Append replacement
-            if (e->rhs) strcat(buf, e->rhs);
-            
-            off += pm.rm_eo;
-            if (!global) break;
+
+            if (match_idx == nth || (global && match_idx > nth)) {
+                strncat(buf, src + off, pm[0].rm_so);
+                if (e->rhs) expand_rhs(buf, e->rhs, src + off, pm);
+            } else {
+                /* Not our target match: copy everything including the match */
+                strncat(buf, src + off, pm[0].rm_eo);
+            }
+
+            off += pm[0].rm_eo;
+            if (pm[0].rm_eo == 0) {
+                if (src[off] == '\0') break;
+                strncat(buf, src + off, 1);
+                off++;
+            }
+            if (!global && match_idx == nth) break;
         }
 
         if (found) {
-            // Append remaining suffix
             strcat(buf, src + off);
             update_line_text(&e->lines[i-1], buf);
-            e->curr = i;
             e->dirty = 1;
         }
     }
-    
     regfree(&re);
 }
 
-#endif /* KAYOKO_REGEX_BRE_H */
+#endif

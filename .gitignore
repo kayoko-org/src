@@ -9,6 +9,7 @@ src/cmd/textproc/sed/*.html
 src/cmd/textproc/ed/*.html
 src/cmd/textproc/ed/*.html1
 src/cmd/textproc/ed/.gdbinit
+src/lpts/lpts.json
 *.o
 *.so
 *.a
