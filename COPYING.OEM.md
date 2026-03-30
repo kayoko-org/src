@@ -26,7 +26,8 @@ following conditions are met:
 
 * **Source Code Confidentiality**: The Licensee shall **not redistribute, publish, or otherwise disclose the Source Code of the Software to any third party**. The right to redistribute granted in Section 1 applies strictly to Machine-Readable Binaries.
 
- **Proof of Purchase**: The Licensee has entered into a formal, 
+
+* **Proof of Purchase**: The Licensee has entered into a formal, 
     paid Agreement with The Kayoko Project and remains in good 
     financial standing regarding all associated fees.
 
