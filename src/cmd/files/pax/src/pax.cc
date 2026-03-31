@@ -51,7 +51,7 @@ int handle_pax(int argc, char *argv[]) {
         for (int i = optind; i < argc - 1; i++) {
             pax_copy_node(argv[i], const_cast<char*>(dest));
         }
-    } 
+    }
     // Write mode (Archive creation)
     else if (wflag) {
         int fd = arch_file.empty() ? STDOUT_FILENO : open(arch_file.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
@@ -62,7 +62,7 @@ int handle_pax(int argc, char *argv[]) {
         for (int i = optind; i < argc; i++) {
             pax_archive_file(fd, argv[i]);
         }
-        
+
         if (global_fmt == FMT_CPIO) {
             pax_archive_file(fd, const_cast<char*>(CPIO_TRAILER));
         } else {
@@ -70,7 +70,7 @@ int handle_pax(int argc, char *argv[]) {
             write(fd, trailer.data(), trailer.size());
         }
         if (!arch_file.empty()) close(fd);
-    } 
+    }
     // Read mode (List or Extract)
     else {
         int fd = arch_file.empty() ? STDIN_FILENO : open(arch_file.c_str(), O_RDONLY);

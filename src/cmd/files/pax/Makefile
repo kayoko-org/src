@@ -1,8 +1,8 @@
-.CURDIR=    src
 PROG=       pax
+.PATH:      ${.CURDIR}/src
 
 # Modular CXX files + the original C archive library
-SRCS=       main.cc tar.cc cpio.cc paxlogic.cc ../../../lib/archive.c
+SRCS=       main.cc tar.cc cpio.cc pax.cc ../../../lib/archive.c
 
 # Add include directory to header search path
 # We use CFLAGS for the C archive.c and CXXFLAGS for the .cc files
