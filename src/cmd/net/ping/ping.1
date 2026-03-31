@@ -1,0 +1,67 @@
+.Dd March 31, 2026
+.Dt PING 1
+.Os Kayoko
+.Sh NAME
+.Nm ping
+.Nd send ICMP ECHO_REQUEST packets to network hosts
+.Sh SYNOPSIS
+.Nm
+.Ar host
+.Sh DESCRIPTION
+The
+.Nm
+utility uses the ICMP protocol's mandatory ECHO_REQUEST datagram to elicit 
+an ICMP ECHO_RESPONSE from a host or gateway.
+ECHO_REQUEST datagrams (\(dq偶pings\(dq) have an IP and ICMP header, 
+followed by a 
+.Vt struct timeval
+and then an arbitrary number of \(dqpad\(dq bytes used to fill out the packet.
+.Pp
+When using
+.Nm
+for fault isolation, it should first be run on the local host, to verify 
+that the local network interface is up and running.
+Then, hosts and gateways further and further away should be \(dqpinged\(dq.
+.Pp
+The following statistics are displayed upon termination:
+.Bl -tag -width indent
+.It Packets transmitted
+The total number of ICMP ECHO_REQUEST packets sent.
+.It Packets received
+The total number of ICMP ECHO_RESPONSE packets successfully captured.
+.It Packet loss
+The percentage of packets that failed to return.
+.It Round-trip times
+The minimum, average, maximum, and standard deviation of the time taken 
+for the packets to return, measured in milliseconds with microsecond 
+precision.
+.El
+.Sh IMPLEMENTATION NOTES
+The 
+.Nm
+utility on 
+.Os
+is implemented in C++ to utilize high-resolution monotonic clock 
+interfaces, providing sub-millisecond timing accuracy.
+It performs reverse DNS lookups on the provided 
+.Ar host
+to display canonical names in the output.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Ping a remote host by IP address:
+.Pp
+.Dl $ ping 1.1.1.1
+.Pp
+Ping a host by hostname:
+.Pp
+.Dl $ ping google.com
+.Sh DIAGNOSTICS
+The
+.Nm
+utility exits 0 on success, and >0 if an error occurs. 
+Success is defined as receiving at least one response packet.
+.Sh SEE ALSO
+.Xr netstat 1 ,
+.Xr icmp 4 ,
+.Xr ifconfig 8
