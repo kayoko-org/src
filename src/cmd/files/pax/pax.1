@@ -1,4 +1,4 @@
-.Dd March 30, 2026
+.Dd March 31, 2026
 .Dt PAX 1
 .Os Kayoko
 .Sh NAME
@@ -13,7 +13,9 @@
 .Op Fl x Ar format
 .Op Ar pattern ...
 .Nm tar
-.Op Fl cvf Ar archive
+.Op Fl cvtx
+.Op Fl f Ar archive
+.Op Fl C Ar directory
 .Op Ar file ...
 .Nm cpio
 .Fl o | i
@@ -92,8 +94,20 @@ When invoked as
 Create a new
 .Sy ustar
 format archive.
+.It Fl v
+Verbose mode.
+.It Fl t
+List the contents of an archive without extracting.
 .It Fl x
-Extract from an archive (default behavior if -c is absent).
+Extract from an archive.
+.It Fl f Ar archive
+Use the specified
+.Ar archive
+file instead of standard input/output.
+.It Fl C Ar directory
+Change to
+.Ar directory
+before performing operations.
 .El
 .Pp
 When invoked as
@@ -107,6 +121,8 @@ format archive.
 Input mode. Extract files from a
 .Sy cpio
 archive provided on standard input.
+.It Fl v
+Verbose mode.
 .El
 .Sh EXIT STATUS
 .Ex -std

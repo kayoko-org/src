@@ -23,7 +23,7 @@ static void usage_cpio(void) {
 }
 
 static void usage_tar(void) {
-    fprintf(stderr, "usage: tar [-cvf archive] [file ...]\n");
+    fprintf(stderr, "usage: tar [[-]cxvtf archive] [-C directory] [file ...]\n");
     exit(1);
 }
 
@@ -64,44 +64,112 @@ int handle_cpio(int argc, char *argv[]) {
 /**
  * handle_tar: Implementation of tar-style interface
  */
+
 int handle_tar(int argc, char *argv[]) {
     int c;
     int create = 0;
+    int list = 0;
+    int extract = 0;
     char *arch_file = NULL;
+    char *dashed_arg = NULL;
 
-    global_fmt = FMT_USTAR;
+    if (argc < 2) {
+        usage_tar();
+        return 1;
+    }
 
-    while ((c = getopt(argc, argv, "cvf:")) != -1) {
-        switch (c) {
-            case 'c': create = 1; break;
-            case 'v': vflag = 1; break;
-            case 'f': arch_file = optarg; break;
-            default: usage_tar();
+    /* * Handle "Old Style" tar commands (e.g., 'tar cvf' instead of 'tar -cvf').
+     * We check if the first argument doesn't start with a dash.
+     */
+if (argv[1][0] != '-') {
+        size_t len = strlen(argv[1]);
+        dashed_arg = malloc(len + 2);
+        if (dashed_arg) {
+            dashed_arg[0] = '-';
+            memcpy(dashed_arg + 1, argv[1], len + 1);
+            argv[1] = dashed_arg;
         }
     }
 
-    int fd = arch_file ? open(arch_file, create ? (O_WRONLY|O_CREAT|O_TRUNC) : O_RDONLY, 0644) 
-                       : (create ? STDOUT_FILENO : STDIN_FILENO);
+    /* Reset getopt state for multi-call binary consistency */
+    optind = 1;
+    global_fmt = FMT_USTAR;
+
+    while ((c = getopt(argc, argv, "cvtxf:C:")) != -1) {
+        switch (c) {
+            case 'c': create = 1;  break;
+            case 'v': vflag = 1;   break;
+            case 't': list = 1;    break;
+            case 'x': extract = 1; break;
+            case 'f': arch_file = optarg; break;
+            case 'C':
+                if (chdir(optarg) < 0) {
+                    perror("tar: chdir");
+                    free(dashed_arg);
+                    return 1;
+                }
+                break;
+            default:
+                usage_tar();
+                free(dashed_arg);
+                return 1;
+        }
+    }
+
+    /* Safety check: ensure one action was requested */
+    if (!create && !list && !extract) {
+        fprintf(stderr, "tar: must specify one of -c, -t, or -x\n");
+        usage_tar();
+        free(dashed_arg);
+        return 1;
+    }
+
+    /* Open the archive file or use stdio */
+    int fd;
+    if (arch_file) {
+        if (create) {
+            fd = open(arch_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        } else {
+            fd = open(arch_file, O_RDONLY);
+        }
+    } else {
+        fd = create ? STDOUT_FILENO : STDIN_FILENO;
+    }
 
     if (fd < 0) {
         perror("tar: open");
+        free(dashed_arg);
         return 1;
     }
 
     if (create) {
+        /* Process all remaining arguments as files to archive */
         for (int i = optind; i < argc; i++) {
             pax_archive_file(fd, argv[i]);
         }
-        char trailer[BLKSIZE * 2];
+        
+        /* Write the POSIX tar end-of-archive marker (two 512-byte blocks of zeros) */
+        char trailer[1024];
         memset(trailer, 0, sizeof(trailer));
-        write(fd, trailer, sizeof(trailer));
+        if (write(fd, trailer, sizeof(trailer)) != sizeof(trailer)) {
+            perror("tar: write trailer");
+        }
     } else {
-        pax_do_read_list(fd, 1);
+        /* * pax_do_read_list(fd, 0) -> List (-t)
+         * pax_do_read_list(fd, 1) -> Extract (-x)
+         */
+        pax_do_read_list(fd, extract);
     }
 
-    if (arch_file) close(fd);
+    /* Cleanup */
+    if (arch_file && fd > 2) {
+        close(fd);
+    }
+    free(dashed_arg);
+
     return 0;
 }
+
 
 /**
  * handle_pax: The standard POSIX pax interface
