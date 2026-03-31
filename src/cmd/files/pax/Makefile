@@ -1,24 +1,17 @@
 PROG=       pax
-.PATH:      ${.CURDIR}/src
 
 # Modular CXX files + the original C archive library
-SRCS=       main.cc tar.cc cpio.cc pax.cc ../../../lib/archive.c
+SRCS=       src/main.cc src/tar.cc src/cpio.cc src/pax.cc ../../../lib/archive.c
 
-# Add include directory to header search path
-# We use CFLAGS for the C archive.c and CXXFLAGS for the .cc files
-CFLAGS+=    -I../../../include
-CXXFLAGS+=  -I../../../include -std=c++17
-
-# Ensure the linker knows we are using C++ (required for some BSD make versions)
-LDADD+=     -lstdc++
+#LDFLAGS+=     -lstdc++
 
 # Create hard links for the multicall binary
 # These allow argv[0] to change based on how the user invokes the program
-LINKS=      ${BINDIR}/pax ${BINDIR}/tar \
-            ${BINDIR}/pax ${BINDIR}/cpio
+LINKS=      pax tar \
+            pax cpio
 
 # Create symbolic links for the manual pages
 MLINKS=     pax.1 tar.1 \
             pax.1 cpio.1
 
-.include <bsd.prog.mk>
+include ../../build.mk

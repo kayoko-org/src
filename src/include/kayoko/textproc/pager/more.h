@@ -1,6 +1,9 @@
 #ifndef KAYOKO_TEXTPROC_PAGER_MORE_H
 #define KAYOKO_TEXTPROC_PAGER_MORE_H
 
+#if defined(__sun) || defined(__hpux)
+#include <sys/termios.h>
+#endif
 #include <stdio.h>
 #include <termios.h>
 #include <sys/ioctl.h>

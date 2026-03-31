@@ -1,14 +1,8 @@
-PROG=	more
-.PATH:	${.CURDIR}/src
+PROG   = more
+SRCS   = src/more.c
+MAN    = more.1
 
-SRCS=	more.c
+LINKS  = more moar
+MLINKS = more.1 moar.1
 
-# Kayoko Header Integration
-CFLAGS+= -I${.CURDIR}/../../../include -Wall -Wextra -std=c99
-CFLAGS+= -D_POSIX_C_SOURCE=200809L
-
-MAN=	more.1
-LINKS=	${BINDIR}/more ${BINDIR}/moar
-MLINKS= more.1 moar.1
-
-.include <bsd.prog.mk>
+include ../../build.mk

@@ -5,7 +5,7 @@
 #include <dirent.h>
 #include "cpio.h"
 #include "ustar.h"
-#include "util.h"
+#include "utils.h"
 
 /* --- Global State --- */
 extern int vflag;

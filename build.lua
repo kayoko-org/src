@@ -182,8 +182,8 @@ tasks["coreutils"] = function()
         if cfg.without[name] then return end
         if needs_update(src, bin) then
             local libs = special_libs[name] or ""
-            local ldflags = string.format("-lutil -lm %s", libs)
-            sh(string.format("cc -Isrc/include -I%s/include -O2 -static -s -o %s %s %s %s", 
+            local ldflags = string.format("-lm %s", libs)
+            sh(string.format("cc -Isrc/include -I%s/include -O2 -o %s %s %s %s", 
                 cfg.inst, bin, src, ldflags, extra_ld or ""))
         end
     end
@@ -202,8 +202,8 @@ tasks["coreutils"] = function()
                         if io.open(subdir .. "/Makefile", "r") then
                             local libs = special_libs[name]
                             local env = libs and string.format("LDFLAGS='%s' ", libs) or ""
-                            sh(string.format("%smake -C %s BINDIR=%s DESTDIR=%s install", env, subdir, target_dir, cfg.root))
-                        end
+                       	    sh(string.format("%s %s -C %s DESTDIR=%s install", env, "gmake", subdir, cfg.root))
+		    	end
                     end
                 elseif entry:match("%.c$") then
                     local name = entry:match("([^/]+)%.c$")
@@ -215,7 +215,7 @@ tasks["coreutils"] = function()
             handle:close()
         end
     end     
-    sh("chflags schg " .. cfg.root .. "/sbin/login")
+    -- sh("chflags schg " .. cfg.root .. "/sbin/login")
 end
 
 tasks["kernel"] = function()

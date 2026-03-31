@@ -1,6 +1,7 @@
 #ifndef KAYOKO_TEXTPROC_ANSI_COLORS_H
 #define KAYOKO_TEXTPROC_ANSI_COLORS_H
 
+
 /* --- ANSI Base Sequences --- */
 #define KYK_ANSI_CSI         "\x1b["
 #define KYK_ANSI_RESET_ALL   "0"

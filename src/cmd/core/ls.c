@@ -15,18 +15,23 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
+#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__Apple__)
 #include <util.h>
+#define HAVE_ST_FLAGS 1
+#endif
 #include "ls.h"
 
 int posixly_wrong = 0;
+
 const char* get_flags_str(unsigned long flags) {
+#ifdef HAVE_ST_FLAGS
     if (flags & SF_IMMUTABLE) return "schg";
     if (flags & UF_IMMUTABLE) return "uchg";
     if (flags & SF_APPEND)    return "sappnd";
     if (flags & UF_APPEND)    return "uappnd";
+#endif
     return "-";
 }
-
 
 static int flag_a = 0, flag_b = 0, flag_c = 0, flag_d = 0, flag_f = 0;
 static int flag_g = 0, flag_i = 0, flag_k = 0, flag_l = 0, flag_m = 0;
@@ -119,10 +124,14 @@ void print_long(file_info *f, int max_nlink, int max_size, int max_user, int max
     if (flag_n || !gr) printf("%-*u ", max_group, (unsigned int)f->st.st_gid);
     else printf("%-*s ", max_group, gr->gr_name);
 
-    /* The "Wrong" Field: Manual mapping for NetBSD flags */
+	
     if (flag_o && posixly_wrong) {
+	#ifdef HAVE_ST_FLAGS
         const char *fstr = get_flags_str(f->st.st_flags);
         printf("%-*s ", max_flags, fstr);
+	#else
+        printf("%-*s ", max_flags, "-");
+	#endif
     }
 
     if (S_ISCHR(f->st.st_mode) || S_ISBLK(f->st.st_mode)) {
