@@ -1,7 +1,7 @@
 -- Configuration
 local TEMPLATE_FILE = "template.html"
 local DATA_DIR = "data"
-local BUILD_DIR = "build"
+local BUILD_DIR = "../../docs/"
 local FRAGMENTS = { header = "fragments/header.html", footer = "fragments/footer.html" }
 
 local function read_file(path)
