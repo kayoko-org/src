@@ -14,7 +14,7 @@ MANDIR   ?= $(PREFIX)/share/man/man1
 
 CFLAGS   ?= -O2 -Wall -Wextra -std=c11
 CXXFLAGS ?= -O2 -Wall -Wextra -std=c++17
-CPPFLAGS ?= -I$(TOP)/include -I../include -I./include
+CPPFLAGS ?= -I$(TOP)/include -I../include -I./include -I./inc
 LDFLAGS  ?= 
 
 UNAME_S := $(shell uname -s)

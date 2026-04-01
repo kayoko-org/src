@@ -18,6 +18,7 @@ src/kat/x86_64
 src/kat/machine
 src/cmd/**/*.html*
 src/cmd/net/ping/ping
+src/cmd/sh/sh
 src/cmd/files/ls/ls
 src/cmd/files/pax/pax
 src/cmd/files/needsupdate/needsupdate
