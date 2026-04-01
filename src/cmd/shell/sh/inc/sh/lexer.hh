@@ -16,13 +16,14 @@ public:
      */
     std::vector<Token> tokenize(std::set<std::string> seen = {});
 
+    std::string capture_exec(const std::string& cmd);
+    std::string read_word();
+    std::string expand_string();
 private:
     std::string input_;
     size_t pos_;
     
-    std::string read_word();
     std::string get_var_value(const std::string& var_name);
-    std::string capture_exec(const std::string& cmd);
 };
 
 #endif

@@ -34,8 +34,7 @@ std::string Lexer::get_var_value(const std::string& var_name) {
 }
 
 /**
- * Handles backtick or $(...) command substitution via popen.
- * Uses POSIX pclose/popen.
+ * Handles backtick command substitution via popen.
  */
 std::string Lexer::capture_exec(const std::string& cmd) {
     std::string result;
@@ -47,7 +46,7 @@ std::string Lexer::capture_exec(const std::string& cmd) {
     }
     pclose(pipe);
     
-    // Remove trailing newlines to match standard shell behavior
+    // Remove trailing newlines
     while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
         result.pop_back();
     }
@@ -56,17 +55,17 @@ std::string Lexer::capture_exec(const std::string& cmd) {
 
 /**
  * Reads a single word, handling quotes and variable expansion.
+ * Single quotes ('') keep contents literal (supporting ksh-style PS1).
+ * Double quotes ("") and unquoted text allow $VAR and `cmd` expansion.
  */
 std::string Lexer::read_word() {
     std::string word;
     char quote_char = 0; 
 
-    // 1. Check for Tilde Expansion at the very start of the word
+    // 1. Check for Tilde Expansion at the very start
     if (pos_ < input_.length() && input_[pos_] == '~') {
         size_t tilde_pos = pos_ + 1;
         std::string user_name;
-        
-        // Find the "prefix" (everything until the next / or space or delimiter)
         while (tilde_pos < input_.length() && 
                !isspace(static_cast<unsigned char>(input_[tilde_pos])) && 
                !strchr("/|><;&\"\'", input_[tilde_pos])) {
@@ -75,18 +74,15 @@ std::string Lexer::read_word() {
         }
 
         if (user_name.empty()) {
-            // Case: ~ or ~/path
             char* home = std::getenv("HOME");
             word = home ? home : "";
-            pos_++; // Consume the '~'
+            pos_++;
         } else {
-            // Case: ~user or ~user/path
             struct passwd* pw = getpwnam(user_name.c_str());
             if (pw) {
                 word = pw->pw_dir;
-                pos_ = tilde_pos; // Consume '~user'
+                pos_ = tilde_pos;
             } else {
-                // User not found: POSIX says keep it as literal text
                 word = "~";
                 pos_++;
             }
@@ -96,22 +92,52 @@ std::string Lexer::read_word() {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // Handle Quotes
-        if ((c == '\'' || c == '\"') && quote_char == 0) {
-            quote_char = c;
+        // Handle Single Quotes: NO expansion happens inside
+        if (c == '\'' && quote_char == 0) {
+            pos_++; 
+            while (pos_ < input_.length() && input_[pos_] != '\'') {
+                word += input_[pos_];
+                pos_++;
+            }
+            if (pos_ < input_.length()) pos_++;
+            continue;
+        }
+
+        // Handle Double Quotes: Expansion allowed
+        if (c == '\"' && quote_char == 0) {
+            quote_char = '\"';
             pos_++;
             continue;
-        } else if (c == quote_char) {
+        } else if (c == '\"' && quote_char == '\"') {
             quote_char = 0;
             pos_++;
+            continue;
+        }
+
+        // Handle Command Substitution (Backticks)
+        // Expanded immediately UNLESS we are in single quotes (handled above)
+        if (c == '`') {
+            pos_++;
+            size_t start = pos_;
+            while (pos_ < input_.length() && input_[pos_] != '`') {
+                if (input_[pos_] == '\\' && pos_ + 1 < input_.length() && input_[pos_+1] == '`') {
+                    pos_ += 2;
+                } else {
+                    pos_++;
+                }
+            }
+            std::string cmd = input_.substr(start, pos_ - start);
+            if (pos_ < input_.length()) pos_++;
+            
+            word += capture_exec(cmd);
             continue;
         }
 
         // Break on delimiters if not inside quotes
         if (quote_char == 0 && (isspace(static_cast<unsigned char>(c)) || strchr("|><;&", c))) break;
 
-        // Variable expansion (skipping single quotes)
-        if (c == '$' && quote_char != '\'') {
+        // Variable expansion
+        if (c == '$') {
             pos_++;
             if (pos_ >= input_.length() || 
                 isspace(static_cast<unsigned char>(input_[pos_])) || 
@@ -137,9 +163,6 @@ std::string Lexer::read_word() {
     return word;
 }
 
-/**
- * Main tokenization loop with recursive alias support and cycle detection.
- */
 std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     std::vector<Token> tokens;
     bool next_is_cmd = true; 
@@ -152,7 +175,6 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             continue;
         }
 
-        // Structural Operators
         if (c == '|') {
             tokens.push_back({TokenType::PIPE, "|"});
             pos_++;
@@ -178,15 +200,10 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             std::string val = read_word();
             bool alias_trailing_space = false;
 
-            // --- Recursive Alias Expansion ---
-            // Only expand if in command position AND not already expanded in this chain
             if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
                 std::string expanded = aliases[val];
-                
-                // POSIX Rule: If alias ends in space, expand the next word too
                 alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');
                 
-                // Add current word to 'seen' to prevent infinite recursion
                 std::set<std::string> next_seen = seen;
                 next_seen.insert(val);
 
@@ -194,11 +211,9 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
                 auto sub_tokens = sub_lexer.tokenize(next_seen);
                 
                 if (!sub_tokens.empty()) {
-                    // Push all tokens from the alias expansion except the last one
                     for (size_t i = 0; i < sub_tokens.size() - 1; ++i) {
                         tokens.push_back(sub_tokens[i]);
                     }
-                    // The last token's value is used for the current word's processing
                     val = sub_tokens.back().value; 
                 } else {
                     val = ""; 
@@ -208,8 +223,6 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             if (val.empty()) continue;
 
             TokenType type = TokenType::WORD;
-
-            // Keyword Promotion
             if (val == "if") { type = TokenType::IF; next_is_cmd = true; }
             else if (val == "then") { type = TokenType::THEN; next_is_cmd = true; }
             else if (val == "else") { type = TokenType::ELSE; next_is_cmd = true; }
@@ -218,7 +231,6 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             else if (val == "do") { type = TokenType::DO; next_is_cmd = true; }
             else if (val == "done") { type = TokenType::DONE; next_is_cmd = false; }
             else {
-                // If previous alias had a trailing space, next word is still a command
                 next_is_cmd = alias_trailing_space; 
             }
 
@@ -226,4 +238,35 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
         }
     }
     return tokens;
+}
+
+/**
+ * POSIX-compliant string expansion for prompts (PS1/PS2).
+ * This continues reading until the entire input string is processed.
+ */
+std::string Lexer::expand_string() {
+    std::string result;
+    while (pos_ < input_.length()) {
+        // 1. Skip leading whitespace but preserve it in the output
+        while (pos_ < input_.length() && isspace(static_cast<unsigned char>(input_[pos_]))) {
+            result += input_[pos_];
+            pos_++;
+        }
+
+        if (pos_ >= input_.length()) break;
+
+        // 2. Use your existing logic to expand the next "chunk"
+        result += read_word();
+
+        // 3. If we stopped at a delimiter (like > or |), add it manually
+        // and keep going. This is the key to fixing your PS1.
+        if (pos_ < input_.length() && !isspace(static_cast<unsigned char>(input_[pos_]))) {
+            // Check if it's an operator that read_word() bailed on
+            if (strchr("|><;&", input_[pos_])) {
+                result += input_[pos_];
+                pos_++;
+            }
+        }
+    }
+    return result;
 }

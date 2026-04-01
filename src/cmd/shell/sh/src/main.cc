@@ -187,9 +187,20 @@ bool handle_builtins(SimpleCommand* cmd) {
  * Signal handler for SIGINT (Ctrl+C)
  */
 void handle_sigint(int sig) {
-    const char* prompt = getenv("PS1");
-    if (!prompt) prompt = (geteuid() == 0) ? "# " : "$ ";
-    std::cout << "\n" << prompt << std::flush;
+    // 1. Move to a new line
+    std::cout << "\n";
+
+    // 2. Get the prompt template
+    const char* ps1_raw = getenv("PS1");
+    std::string prompt_template = ps1_raw ? ps1_raw : ((geteuid() == 0) ? "# " : "$ ");
+
+    // 3. Use the Lexer to expand backticks/variables (the ksh behavior)
+    // Note: We use expand_string() so delimiters like '>' aren't lost
+    Lexer prompt_lexer(prompt_template);
+    std::string expanded_prompt = prompt_lexer.expand_string();
+
+    // 4. Print and flush
+    std::cout << expanded_prompt << std::flush;
 }
 
 /**
@@ -245,20 +256,37 @@ void run_shell(std::istream& input, bool interactive) {
 
     while (true) {
         if (interactive) {
-            const char* prompt_var = full_input.empty() ? "PS1" : "PS2";
-            const char* prompt_val = getenv(prompt_var);
-            std::cout << (prompt_val ? prompt_val : "> ") << std::flush;
+            // 1. Determine which prompt variable to look up
+            // PS1 for new commands, PS2 for continuation lines
+            const char* prompt_var_name = full_input.empty() ? "PS1" : "PS2";
+            const char* prompt_raw_val = getenv(prompt_var_name);
+            
+            // 2. Define the raw string to expand (fallback to defaults if env is null)
+            std::string prompt_template = prompt_raw_val ? prompt_raw_val : (full_input.empty() ? "$ " : "> ");
+
+            // 3. Create a Lexer for the prompt and use the expansion-only method.
+            // This preserves characters like '>' and '|' that read_word() would normally skip.
+            Lexer prompt_lexer(prompt_template);
+            std::string expanded_prompt = prompt_lexer.expand_string();
+
+            // 4. Output the live prompt to the user
+            std::cout << expanded_prompt << std::flush;
         }
 
+        // Read line from input (stdin or script file)
         if (!std::getline(input, line)) {
             if (interactive) std::cout << "exit" << std::endl;
             break;
         }
 
+        // Append the new line to our accumulation buffer
         full_input += line;
+
+        // Tokenize the current accumulated input
         Lexer lexer(full_input);
         std::vector<Token> tokens = lexer.tokenize();
 
+        // Handle empty input (just whitespace/newlines)
         if (tokens.empty()) {
             if (full_input.find_first_not_of(" \t\n\r") == std::string::npos) {
                 full_input.clear();
@@ -268,10 +296,12 @@ void run_shell(std::istream& input, bool interactive) {
             continue;
         }
 
+        // Check if the command is syntactically complete (e.g., closed quotes/brackets)
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
-            full_input.clear();
+            full_input.clear(); // Reset for the next command
         } else {
+            // Command is incomplete; add a newline and loop back to show PS2
             full_input += "\n";
         }
     }
