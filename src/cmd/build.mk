@@ -8,9 +8,9 @@ INSTALL  ?= install
 MKDIR    ?= mkdir -p
 STRIP    ?= strip
 
-PREFIX   ?= /usr/local
+PREFIX   ?= /usr/
 BINDIR   ?= $(PREFIX)/bin
-MANDIR   ?= $(PREFIX)/share/man/man1
+MANDIR   ?= /usr/share/man/man1
 
 CFLAGS   ?= -O2 -Wall -Wextra -std=c11
 CXXFLAGS ?= -O2 -Wall -Wextra -std=c++17
