@@ -30,4 +30,4 @@ To exclude certain things, use --without-thing
 Legal
 -----
 
-This project is licensed under the PolyForm Noncommercial License 1.0.0. For OEM usage, please view COPYING.OEM.md.
+This project is licensed under the Kayoko Project License. For OEM usage, please view COPYING.OEM.
