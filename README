@@ -21,7 +21,7 @@ On a running Kayoko system:
 
 Building
 -------
-    $ lua ./build.lua coreutils|kernel|init|base|branding
+    $ lua ./build.lua <coreutils|kernel|init|base|branding>
 
 To add color, you can use --color=always.
 
