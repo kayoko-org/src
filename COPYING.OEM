@@ -1,0 +1,78 @@
+COPYING.OEM
+===========
+
+Commercial Redistribution License
+Copyright (c) 2026 The Kayoko Project
+
+1. GRANT OF LICENSE
+-------------------
+Subject to the terms and conditions herein and the execution of a 
+contemporaneous, separate Commercial Purchase Agreement (the 
+"Agreement") between the Licensee and The Kayoko Project, the 
+Licensor hereby grants the Licensee a non-exclusive, worldwide, 
+sublicensable, limited license to:
+
+A. Distribute and mirror the Software in Machine-Readable 
+   Compiled Binary Form only;
+B. Reproduce and install the Software onto proprietary hardware 
+   for the purpose of resale;
+C. Create Derivative Works of the Software;
+D. Market, sell, and lease the Software as a standalone 
+   commercial product or as a component of a hardware-software 
+   integrated bundle.
+
+2. CONDITIONS AND RESTRICTIONS
+------------------------------
+The licenses granted in Section 1 are expressly conditioned upon 
+the Licensee's continuous compliance with the following 
+obligations:
+
+Source Code Confidentiality: The Licensee shall maintain the 
+Source Code of the Software in strict confidence. The Licensee 
+is prohibited from redistributing, publishing, or otherwise 
+disclosing the Source Code to any third party. The right to 
+distribute is strictly limited to Compiled Binary Form.
+
+Requirement of Agreement: This license is valid only if the 
+Licensee has entered into a formal, fully executed Agreement 
+with The Kayoko Project and remains in good financial standing 
+regarding all associated licensing fees, royalties, and 
+considerations.
+
+Preservation of Restrictions: The Licensee shall not 
+redistribute the Software under any terms that diminish, 
+waive, or circumvent the protections and restrictions 
+stipulated in this COPYING.OEM license. Any sublicense granted 
+by the Licensee must incorporate these commercial restrictions 
+unless express written authorization is provided by The 
+Kayoko Project.
+
+Attribution: All distributed versions, including Derivative 
+Works, must retain all original copyright notices and a 
+verbatim copy of this COPYING.OEM file.
+
+Anti-Circumvention: The Licensee is prohibited from granting 
+sublicenses intended to, or having the effect of, allowing third 
+parties to bypass the requirement of a direct, paid Agreement 
+with The Kayoko Project.
+
+3. TERMINATION
+--------------
+Any material breach of the Agreement or the restrictions 
+stipulated in this license—including but not limited to 
+non-payment of fees or unauthorized disclosure of Source Code—
+shall result in the immediate and automatic termination of all 
+rights and licenses granted hereunder. Upon termination, 
+Licensee shall immediately cease all use, redistribution, 
+and sales of the Software.
+
+4. NO WARRANTY AND LIMITATION OF LIABILITY
+------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND 
+NON-INFRINGEMENT. IN NO EVENT SHALL THE LICENSOR OR THE KAYOKO 
+PROJECT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING 
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
+OR OTHER DEALINGS IN THE SOFTWARE.
