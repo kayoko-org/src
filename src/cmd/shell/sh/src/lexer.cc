@@ -5,6 +5,7 @@
 #include <cctype>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <pwd.h>
 #include <map>
 #include <set>
 
@@ -59,6 +60,38 @@ std::string Lexer::capture_exec(const std::string& cmd) {
 std::string Lexer::read_word() {
     std::string word;
     char quote_char = 0; 
+
+    // 1. Check for Tilde Expansion at the very start of the word
+    if (pos_ < input_.length() && input_[pos_] == '~') {
+        size_t tilde_pos = pos_ + 1;
+        std::string user_name;
+        
+        // Find the "prefix" (everything until the next / or space or delimiter)
+        while (tilde_pos < input_.length() && 
+               !isspace(static_cast<unsigned char>(input_[tilde_pos])) && 
+               !strchr("/|><;&\"\'", input_[tilde_pos])) {
+            user_name += input_[tilde_pos];
+            tilde_pos++;
+        }
+
+        if (user_name.empty()) {
+            // Case: ~ or ~/path
+            char* home = std::getenv("HOME");
+            word = home ? home : "";
+            pos_++; // Consume the '~'
+        } else {
+            // Case: ~user or ~user/path
+            struct passwd* pw = getpwnam(user_name.c_str());
+            if (pw) {
+                word = pw->pw_dir;
+                pos_ = tilde_pos; // Consume '~user'
+            } else {
+                // User not found: POSIX says keep it as literal text
+                word = "~";
+                pos_++;
+            }
+        }
+    }
 
     while (pos_ < input_.length()) {
         char c = input_[pos_];
