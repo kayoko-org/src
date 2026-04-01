@@ -6,22 +6,14 @@
 #include <memory>
 
 /**
- * PipelineCommand represents a series of commands connected by pipes (|).
- * Example: ls | grep ".cc" | wc -l
+ * Represents a sequence of commands connected by pipes: cmd1 | cmd2 | cmd3
  */
 class PipelineCommand : public Command {
 public:
-    PipelineCommand() = default;
-    virtual ~PipelineCommand() = default;
-
-    /**
-     * Executes each command in the pipeline, setting up pipes 
-     * between them and waiting for the final command in the chain.
-     */
-    virtual int execute() override;
-
-    // The list of commands in the pipeline
     std::vector<std::shared_ptr<Command>> commands;
+
+    // Overriding the base execute with the matching signature
+    int execute(bool fork_process = true) override;
 };
 
 #endif

@@ -5,26 +5,39 @@
 #include <vector>
 #include <memory>
 
+// Define types of redirection
+enum class RedirType {
+    IN,      // <
+    OUT,     // >
+    APPEND,  // >>
+    DUP      // >& or <& (e.g., 2>&1)
+};
+
+// Structure to hold redirection data
+struct Redirection {
+    int src_fd;         // The FD to redirect (e.g., 2)
+    RedirType type;     // The operator type
+    std::string target; // Filename or target FD string (e.g., "1")
+};
+
 class Command {
 public:
     virtual ~Command() = default;
-    virtual int execute() = 0; // Returns exit status
+    
+    /**
+     * @param fork_process If true, the command manages its own fork.
+     * If false, it executes in the current process.
+     */
+    virtual int execute(bool fork_process = true) = 0;
 };
 
-// Represents: ls -l /tmp
+// Represents a single executable and its arguments/redirections
 class SimpleCommand : public Command {
 public:
     std::vector<std::string> args;
-    std::string input_file, output_file;
-    bool append = false;
-    int execute() override;
-};
+    std::vector<Redirection> redirections;
 
-// Represents: ls | grep sh
-class Pipeline : public Command {
-public:
-    std::vector<std::shared_ptr<Command>> stages;
-    int execute() override;
+    int execute(bool fork_process = true) override;
 };
 
 #endif

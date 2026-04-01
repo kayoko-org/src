@@ -5,8 +5,6 @@
 
 /**
  * TokenType defines the atoms of our shell grammar.
- * Keywords like IF/WHILE are treated as special WORDs by the Lexer
- * only when they are not quoted.
  */
 enum class TokenType {
     // Basic types
@@ -18,8 +16,9 @@ enum class TokenType {
     REDIRECT_IN,    // <
     REDIRECT_OUT,   // >
     APPEND,         // >>
+    REDIRECT_DUP,   // >& or <& (e.g., 2>&1)
     
-    // Control Flow "Magic"
+    // Control Flow
     IF,             // if
     THEN,           // then
     ELSE,           // else
@@ -28,15 +27,11 @@ enum class TokenType {
     DO,             // do
     DONE,           // done
     
-    // Grouping (for future expansion)
+    // Grouping
     LBRACE,         // {
     RBRACE          // }
 };
 
-/**
- * Token structure pairs the type with its literal string value.
- * This is passed from the Lexer to the Parser.
- */
 struct Token {
     TokenType type;
     std::string value;

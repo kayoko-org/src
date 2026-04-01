@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <cctype>
 
 /**
  * Internal State Tracker to manage token position and provide
@@ -168,19 +169,21 @@ std::shared_ptr<Command> parse_while(ParserState& state) {
 
 /**
  * Parses a simple command with arguments and redirections.
+ * Updated to support multiple redirections, FD duplication (e.g., 2>&1),
+ * and look-back parsing to handle separated leading digits (e.g., the '1' in '1>&2').
  */
 std::shared_ptr<SimpleCommand> parse_simple(ParserState& state) {
     auto cmd = std::make_shared<SimpleCommand>();
-    
+
     while (!state.at_end()) {
         const Token& t = state.peek();
-        
+
         // Terminate simple command on separators or control keywords
         if (t.type == TokenType::PIPE || t.type == TokenType::SEMICOLON ||
-            t.type == TokenType::THEN || t.type == TokenType::ELSE || 
-            t.type == TokenType::FI   || t.type == TokenType::DO   || 
+            t.type == TokenType::THEN || t.type == TokenType::ELSE ||
+            t.type == TokenType::FI   || t.type == TokenType::DO   ||
             t.type == TokenType::DONE) {
-            
+
             if (t.type == TokenType::SEMICOLON) state.advance();
             break;
         }
@@ -188,30 +191,52 @@ std::shared_ptr<SimpleCommand> parse_simple(ParserState& state) {
         if (t.type == TokenType::WORD) {
             cmd->args.push_back(t.value);
             state.advance();
-        } else if (t.type == TokenType::REDIRECT_OUT || t.type == TokenType::APPEND) {
-            bool is_append = (t.type == TokenType::APPEND);
-            state.advance();
-            if (state.peek().type == TokenType::WORD) {
-                cmd->output_file = state.peek().value;
-                cmd->append = is_append;
-                state.advance();
-            } else {
-                return nullptr; // Syntax error: no file for redirection
+        }
+        // Handle Redirections: >, >>, <, 2>, 2>&1, etc.
+        else if (t.type == TokenType::REDIRECT_OUT || t.type == TokenType::APPEND ||
+                 t.type == TokenType::REDIRECT_IN  || t.type == TokenType::REDIRECT_DUP) {
+
+            Redirection redir;
+            int manual_fd = -1;
+
+            // Look-back: Check if the previous argument was just a single digit.
+            // If so, it's likely the src_fd for this redirection (e.g., the '1' in '1>&2').
+            if (!cmd->args.empty() && cmd->args.back().size() == 1 && std::isdigit(cmd->args.back()[0])) {
+                manual_fd = cmd->args.back()[0] - '0';
+                cmd->args.pop_back(); // Remove it from arguments
             }
-        } else if (t.type == TokenType::REDIRECT_IN) {
-            state.advance();
+
+            // 1. Determine the source FD and RedirType
+            if (t.type == TokenType::REDIRECT_OUT) {
+                redir.type = RedirType::OUT;
+                redir.src_fd = (manual_fd != -1) ? manual_fd : 1;
+            } else if (t.type == TokenType::APPEND) {
+                redir.type = RedirType::APPEND;
+                redir.src_fd = (manual_fd != -1) ? manual_fd : 1;
+            } else if (t.type == TokenType::REDIRECT_IN) {
+                redir.type = RedirType::IN;
+                redir.src_fd = (manual_fd != -1) ? manual_fd : 0;
+            } else if (t.type == TokenType::REDIRECT_DUP) {
+                redir.type = RedirType::DUP;
+                redir.src_fd = (manual_fd != -1) ? manual_fd : 1;
+            }
+
+            state.advance(); // consume the operator (e.g., ">" or ">&")
+
+            // 2. Determine the target (filename or target FD)
             if (state.peek().type == TokenType::WORD) {
-                cmd->input_file = state.peek().value;
+                redir.target = state.peek().value;
+                cmd->redirections.push_back(redir);
                 state.advance();
             } else {
+                // Syntax error: redirection operator not followed by a word/FD
                 return nullptr;
             }
         } else {
-            // Skip unknown tokens to avoid infinite loops
+            // Skip unknown tokens
             state.advance();
         }
     }
-    
-    // Valid simple command must have at least one argument (the executable)
-    return (cmd->args.empty()) ? nullptr : cmd;
+
+    return (cmd->args.empty() && cmd->redirections.empty()) ? nullptr : cmd;
 }

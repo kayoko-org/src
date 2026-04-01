@@ -170,11 +170,55 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
+        // Skip whitespace
         if (isspace(static_cast<unsigned char>(c))) {
             pos_++;
             continue;
         }
 
+        // 1. Handle Redirections with optional File Descriptors (e.g., 2>&1, 1>, >)
+        if (isdigit(c) || c == '>' || c == '<') {
+            size_t temp_pos = pos_;
+            std::string fd_prefix = "";
+
+            // Check if there is a leading number (e.g., the '2' in '2>')
+            if (isdigit(c)) {
+                while (temp_pos < input_.length() && isdigit(input_[temp_pos])) {
+                    fd_prefix += input_[temp_pos];
+                    temp_pos++;
+                }
+            }
+
+            // Check if the character after the optional number is a redirect op
+            if (temp_pos < input_.length() && (input_[temp_pos] == '>' || input_[temp_pos] == '<')) {
+                char op = input_[temp_pos];
+                std::string full_op = fd_prefix + op;
+                temp_pos++;
+
+                TokenType type = (op == '>') ? TokenType::REDIRECT_OUT : TokenType::REDIRECT_IN;
+
+                // Check for Append (>>) or Duplicate (>&)
+                if (temp_pos < input_.length()) {
+                    if (input_[temp_pos] == '>') {
+                        full_op += '>';
+                        type = TokenType::APPEND;
+                        temp_pos++;
+                    } else if (input_[temp_pos] == '&') {
+                        full_op += '&';
+                        type = TokenType::REDIRECT_DUP; // You'll need this in your enum
+                        temp_pos++;
+                    }
+                }
+
+                tokens.push_back({type, full_op});
+                pos_ = temp_pos;
+                next_is_cmd = false;
+                continue;
+            }
+            // If it was just a number NOT followed by > or <, let read_word handle it below
+        }
+
+        // 2. Handle Control Operators
         if (c == '|') {
             tokens.push_back({TokenType::PIPE, "|"});
             pos_++;
@@ -183,23 +227,13 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             tokens.push_back({TokenType::SEMICOLON, ";"});
             pos_++;
             next_is_cmd = true;
-        } else if (c == '>') {
-            if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '>') {
-                tokens.push_back({TokenType::APPEND, ">>"});
-                pos_ += 2;
-            } else {
-                tokens.push_back({TokenType::REDIRECT_OUT, ">"});
-                pos_++;
-            }
-            next_is_cmd = false;
-        } else if (c == '<') {
-            tokens.push_back({TokenType::REDIRECT_IN, "<"});
-            pos_++;
-            next_is_cmd = false;
-        } else {
+        } 
+        // 3. Handle General Words and Aliases
+        else {
             std::string val = read_word();
             bool alias_trailing_space = false;
 
+            // Alias Expansion Logic
             if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
                 std::string expanded = aliases[val];
                 alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');
@@ -222,6 +256,7 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
 
             if (val.empty()) continue;
 
+            // Keyword identification
             TokenType type = TokenType::WORD;
             if (val == "if") { type = TokenType::IF; next_is_cmd = true; }
             else if (val == "then") { type = TokenType::THEN; next_is_cmd = true; }
