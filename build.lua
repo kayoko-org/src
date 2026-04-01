@@ -188,7 +188,7 @@ tasks["coreutils"] = function()
         end
     end
 
-    local categories = {"core", "adm", "textproc"}
+    local categories = {"core", "adm", "textproc", "files", "dev"}
     for _, cat in ipairs(categories) do
         local base_dir = "src/cmd/" .. cat
         local handle = io.popen("ls -F " .. base_dir .. " 2>/dev/null")
