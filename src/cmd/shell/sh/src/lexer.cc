@@ -2,14 +2,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
-#include <cwctype>
+#include <cctype>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <map>
+#include <set>
 
-// Link to globals in main.cc
+// Link to globals defined in main.cc
 extern int last_status;
 extern pid_t shell_pid;
 extern pid_t last_bg_pid;
+extern std::map<std::string, std::string> aliases;
 
 Lexer::Lexer(const std::string& input) : input_(input), pos_(0) {}
 
@@ -30,7 +33,8 @@ std::string Lexer::get_var_value(const std::string& var_name) {
 }
 
 /**
- * Handles backtick and $(...) command substitution via popen.
+ * Handles backtick or $(...) command substitution via popen.
+ * Uses POSIX pclose/popen.
  */
 std::string Lexer::capture_exec(const std::string& cmd) {
     std::string result;
@@ -41,7 +45,8 @@ std::string Lexer::capture_exec(const std::string& cmd) {
         result += buffer;
     }
     pclose(pipe);
-    // Remove trailing newlines to match POSIX behavior
+    
+    // Remove trailing newlines to match standard shell behavior
     while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
         result.pop_back();
     }
@@ -58,7 +63,7 @@ std::string Lexer::read_word() {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // Toggle quotes
+        // Handle Quotes
         if ((c == '\'' || c == '\"') && quote_char == 0) {
             quote_char = c;
             pos_++;
@@ -69,20 +74,23 @@ std::string Lexer::read_word() {
             continue;
         }
 
-        // Break on delimiters if not quoted
-        if (quote_char == 0 && (isspace(c) || strchr("|><;&", c))) break;
+        // Break on delimiters if not inside quotes
+        if (quote_char == 0 && (isspace(static_cast<unsigned char>(c)) || strchr("|><;&", c))) break;
 
         // Variable expansion (skipping single quotes)
         if (c == '$' && quote_char != '\'') {
             pos_++;
-            if (pos_ >= input_.length() || isspace(input_[pos_]) || strchr("\"\'", input_[pos_])) {
+            if (pos_ >= input_.length() || 
+                isspace(static_cast<unsigned char>(input_[pos_])) || 
+                strchr("\"\'", input_[pos_])) {
                 word += '$';
             } else if (strchr("$?!", input_[pos_])) {
                 word += get_var_value(std::string(1, input_[pos_]));
                 pos_++;
             } else {
                 size_t start = pos_;
-                while (pos_ < input_.length() && (isalnum(input_[pos_]) || input_[pos_] == '_')) {
+                while (pos_ < input_.length() && 
+                      (isalnum(static_cast<unsigned char>(input_[pos_])) || input_[pos_] == '_')) {
                     pos_++;
                 }
                 word += get_var_value(input_.substr(start, pos_ - start));
@@ -97,26 +105,29 @@ std::string Lexer::read_word() {
 }
 
 /**
- * Main tokenization loop.
+ * Main tokenization loop with recursive alias support and cycle detection.
  */
-std::vector<Token> Lexer::tokenize() {
+std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     std::vector<Token> tokens;
-    
+    bool next_is_cmd = true; 
+
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        if (isspace(c)) {
+        if (isspace(static_cast<unsigned char>(c))) {
             pos_++;
             continue;
         }
 
-        // Handle structural operators
+        // Structural Operators
         if (c == '|') {
             tokens.push_back({TokenType::PIPE, "|"});
             pos_++;
+            next_is_cmd = true;
         } else if (c == ';') {
             tokens.push_back({TokenType::SEMICOLON, ";"});
             pos_++;
+            next_is_cmd = true;
         } else if (c == '>') {
             if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '>') {
                 tokens.push_back({TokenType::APPEND, ">>"});
@@ -125,22 +136,58 @@ std::vector<Token> Lexer::tokenize() {
                 tokens.push_back({TokenType::REDIRECT_OUT, ">"});
                 pos_++;
             }
+            next_is_cmd = false;
         } else if (c == '<') {
             tokens.push_back({TokenType::REDIRECT_IN, "<"});
             pos_++;
+            next_is_cmd = false;
         } else {
-            // Process a WORD and check for KEYWORD promotion
             std::string val = read_word();
+            bool alias_trailing_space = false;
+
+            // --- Recursive Alias Expansion ---
+            // Only expand if in command position AND not already expanded in this chain
+            if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
+                std::string expanded = aliases[val];
+                
+                // POSIX Rule: If alias ends in space, expand the next word too
+                alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');
+                
+                // Add current word to 'seen' to prevent infinite recursion
+                std::set<std::string> next_seen = seen;
+                next_seen.insert(val);
+
+                Lexer sub_lexer(expanded);
+                auto sub_tokens = sub_lexer.tokenize(next_seen);
+                
+                if (!sub_tokens.empty()) {
+                    // Push all tokens from the alias expansion except the last one
+                    for (size_t i = 0; i < sub_tokens.size() - 1; ++i) {
+                        tokens.push_back(sub_tokens[i]);
+                    }
+                    // The last token's value is used for the current word's processing
+                    val = sub_tokens.back().value; 
+                } else {
+                    val = ""; 
+                }
+            }
+
+            if (val.empty()) continue;
+
             TokenType type = TokenType::WORD;
 
-            // Reserved words promotion (Magic)
-            if (val == "if") type = TokenType::IF;
-            else if (val == "then") type = TokenType::THEN;
-            else if (val == "else") type = TokenType::ELSE;
-            else if (val == "fi") type = TokenType::FI;
-            else if (val == "while") type = TokenType::WHILE;
-            else if (val == "do") type = TokenType::DO;
-            else if (val == "done") type = TokenType::DONE;
+            // Keyword Promotion
+            if (val == "if") { type = TokenType::IF; next_is_cmd = true; }
+            else if (val == "then") { type = TokenType::THEN; next_is_cmd = true; }
+            else if (val == "else") { type = TokenType::ELSE; next_is_cmd = true; }
+            else if (val == "fi") { type = TokenType::FI; next_is_cmd = false; }
+            else if (val == "while") { type = TokenType::WHILE; next_is_cmd = true; }
+            else if (val == "do") { type = TokenType::DO; next_is_cmd = true; }
+            else if (val == "done") { type = TokenType::DONE; next_is_cmd = false; }
+            else {
+                // If previous alias had a trailing space, next word is still a command
+                next_is_cmd = alias_trailing_space; 
+            }
 
             tokens.push_back({type, val});
         }

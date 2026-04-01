@@ -4,11 +4,17 @@
 #include <sh/token.hh>
 #include <string>
 #include <vector>
+#include <set>
 
 class Lexer {
 public:
     Lexer(const std::string& input);
-    std::vector<Token> tokenize();
+
+    /**
+     * Main tokenization loop.
+     * @param seen A set of aliases already expanded in this chain to prevent infinite recursion.
+     */
+    std::vector<Token> tokenize(std::set<std::string> seen = {});
 
 private:
     std::string input_;
