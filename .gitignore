@@ -17,9 +17,12 @@ src/kat/xen
 src/kat/x86_64
 src/kat/machine
 src/cmd/**/*.html*
+src/cmd/net/ping/ping
+src/cmd/files/ls/ls
+src/cmd/files/pax/pax
+src/cmd/files/needsupdate/needsupdate
 src/cmd/textproc/ed/ed
+src/cmd/textproc/sed/sed
 src/cmd/textproc/vis/vis
 src/cmd/textproc/more/more
-src/cmd/files/needsupdate/needsupdate
-src/cmd/files/pax/pax
 src/cmd/dev/ar/ar

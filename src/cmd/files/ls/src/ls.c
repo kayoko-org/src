@@ -9,11 +9,19 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <time.h>
 #include <pwd.h>
 #include <grp.h>
 #include <errno.h>
 #include <stdint.h>
+#if defined(__sun) && defined(__SVR4)
+#include <sys/termios.h>
+#endif
+/* Many BSDs and some Linux setups prefer this for terminal ioctls */
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__Apple__)
+#include <termios.h>
+#endif
 #include <ctype.h>
 #if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__Apple__)
 #include <util.h>
@@ -55,14 +63,24 @@ void report_error(const char *path) {
     global_exit_status = 1;
 }
 
-static int get_terminal_width(void) {
+int get_terminal_width(void) {
+    struct winsize w;
+    // Check if stdout is actually a terminal
+    if (isatty(STDOUT_FILENO)) {
+        // Ask the kernel for the actual terminal dimensions
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0) {
+            return w.ws_col;
+        }
+    }
+
+    // Fallback 1: Check the environment (if the user exported it)
     char *col_env = getenv("COLUMNS");
     if (col_env) {
-        int width = atoi(col_env);
-        if (width > 0) return width;
+        int env_width = atoi(col_env);
+        if (env_width > 0) return env_width;
     }
-    /* POSIX: if COLUMNS is unset, the width is implementation-defined. 
-       80 is the standard historical fallback. */
+
+    // Fallback 2: The historical "Standard"
     return 80;
 }
 
