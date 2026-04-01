@@ -177,15 +177,23 @@ tasks["coreutils"] = function()
         lsdsk = "-lprop"
     }
 
+    local handle = io.popen("uname -s")
+    local host_raw = handle:read("*a"):gsub("%s+", "") -- Remove whitespace/newlines
+    handle:close()
+
+    local host_flag = host_raw:upper():gsub("[^A-Z0-9]", "_")
+
+    local pers_flag = "-DPERS_" .. host_flag
+
     local function compile_util(src, bin, extra_ld)
         local name = bin:match("([^/]+)$")
         if cfg.without[name] then return end
         if needs_update(src, bin) then
             local libs = special_libs[name] or ""
             local ldflags = string.format("-lm %s", libs)
-            sh(string.format("cc -Isrc/include -I%s/include -O2 -o %s %s %s %s", 
-                cfg.inst, bin, src, ldflags, extra_ld or ""))
-        end
+             sh(string.format("cc %s -Isrc/include -I%s/include -O2 -o %s %s %s %s", 
+                       pers_flag, cfg.inst, bin, src, ldflags, extra_ld or ""))
+            end
     end
 
     local categories = {"core", "adm", "textproc", "files", "dev"}
