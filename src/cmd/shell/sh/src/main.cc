@@ -19,6 +19,7 @@ pid_t shell_pid;
 pid_t last_bg_pid = 0;
 const char* shell_name; 
 std::map<std::string, std::string> aliases;
+void run_shell(std::istream& input, bool interactive);
 
 /**
  * Helper to report errors using the shell's name (argv[0])
@@ -134,6 +135,51 @@ bool handle_builtins(SimpleCommand* cmd) {
         return true;
     }
 
+    // 6. . (dot) builtin
+    if (name == ".") {
+        if (cmd->args.size() < 2) {
+            report_error(".", "filename argument required");
+            last_status = 1;
+            return true;
+        }
+
+        std::string path = cmd->args[1];
+        std::ifstream script_stream(path);
+
+        // POSIX: If path doesn't contain a '/', search PATH
+        if (!script_stream.is_open() && path.find('/') == std::string::npos) {
+            char* env_p = getenv("PATH");
+            if (env_p) {
+                std::string path_list(env_p);
+                size_t start = 0, end;
+                while ((end = path_list.find(':', start)) != std::string::npos) {
+                    std::string full_path = path_list.substr(start, end - start) + "/" + path;
+                    script_stream.open(full_path);
+                    if (script_stream.is_open()) break;
+                    start = end + 1;
+                }
+                // Check the last entry in PATH
+                if (!script_stream.is_open()) {
+                    std::string full_path = path_list.substr(start) + "/" + path;
+                    script_stream.open(full_path);
+                }
+            }
+        }
+
+        if (!script_stream.is_open()) {
+            report_error(".", path + ": not found");
+            last_status = 1;
+            return true;
+        }
+
+        // Execute in CURRENT process context
+        // This modifies global 'aliases' and 'last_status' directly
+        run_shell(script_stream, false);
+
+        return true;
+    }
+
+
     return false;
 }
 
@@ -189,41 +235,27 @@ void load_shrc() {
     }
 }
 
-int main(int argc, char** argv) {
-    shell_name = argv[0];
-    shell_pid = getpid();
-    bool interactive = isatty(STDIN_FILENO);
 
-    load_shrc();
-
-    if (interactive) {
-        struct sigaction sa;
-        sa.sa_handler = handle_sigint;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = SA_RESTART;
-        sigaction(SIGINT, &sa, NULL);
-
-        if (!getenv("PS1")) setenv("PS1", (geteuid() == 0) ? "# " : "$ ", 0);
-        if (!getenv("PS2")) setenv("PS2", "> ", 0);
-    }
-
+/**
+ * Core loop logic extracted to handle both cin and file streams.
+ */
+void run_shell(std::istream& input, bool interactive) {
     std::string line;
     std::string full_input;
 
     while (true) {
-        const char* prompt_var = full_input.empty() ? "PS1" : "PS2";
         if (interactive) {
+            const char* prompt_var = full_input.empty() ? "PS1" : "PS2";
             const char* prompt_val = getenv(prompt_var);
             std::cout << (prompt_val ? prompt_val : "> ") << std::flush;
         }
 
-        if (!std::getline(std::cin, line)) {
+        if (!std::getline(input, line)) {
             if (interactive) std::cout << "exit" << std::endl;
-            break; 
+            break;
         }
 
         full_input += line;
-
         Lexer lexer(full_input);
         std::vector<Token> tokens = lexer.tokenize();
 
@@ -238,10 +270,49 @@ int main(int argc, char** argv) {
 
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
-            full_input.clear(); 
+            full_input.clear();
         } else {
             full_input += "\n";
         }
+    }
+}
+
+int main(int argc, char** argv) {
+    shell_name = argv[0];
+    shell_pid = getpid();
+
+    // Default to stdin
+    bool interactive = isatty(STDIN_FILENO);
+    std::ifstream script_file;
+
+    // Check if a filename was passed: sh <filename>
+    if (argc > 1) {
+        script_file.open(argv[1]);
+        if (!script_file.is_open()) {
+            report_error(argv[1], "No such file or directory");
+            return 1;
+        }
+        interactive = false; // Scripts are non-interactive
+    }
+
+    load_shrc();
+
+    if (interactive) {
+        struct sigaction sa;
+        sa.sa_handler = handle_sigint;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = SA_RESTART;
+        sigaction(SIGINT, &sa, NULL);
+
+        if (!getenv("PS1")) setenv("PS1", (geteuid() == 0) ? "# " : "$ ", 0);
+        if (!getenv("PS2")) setenv("PS2", "> ", 0);
+    }
+
+    // Direct input from file or stdin
+    if (script_file.is_open()) {
+        run_shell(script_file, false);
+    } else {
+        run_shell(std::cin, interactive);
     }
 
     return WEXITSTATUS(last_status);
