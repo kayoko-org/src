@@ -186,7 +186,7 @@ bool handle_builtins(SimpleCommand* cmd) {
 /**
  * Signal handler for SIGINT (Ctrl+C)
  */
-void handle_sigint(int sig) {
+void handle_sigint(int) {
     // 1. Move to a new line
     std::cout << "\n";
 
@@ -256,56 +256,54 @@ void run_shell(std::istream& input, bool interactive) {
 
     while (true) {
         if (interactive) {
-            // 1. Determine which prompt variable to look up
-            // PS1 for new commands, PS2 for continuation lines
             const char* prompt_var_name = full_input.empty() ? "PS1" : "PS2";
             const char* prompt_raw_val = getenv(prompt_var_name);
-            
-            // 2. Define the raw string to expand (fallback to defaults if env is null)
             std::string prompt_template = prompt_raw_val ? prompt_raw_val : (full_input.empty() ? "$ " : "> ");
 
-            // 3. Create a Lexer for the prompt and use the expansion-only method.
-            // This preserves characters like '>' and '|' that read_word() would normally skip.
             Lexer prompt_lexer(prompt_template);
             std::string expanded_prompt = prompt_lexer.expand_string();
-
-            // 4. Output the live prompt to the user
             std::cout << expanded_prompt << std::flush;
         }
 
-        // Read line from input (stdin or script file)
         if (!std::getline(input, line)) {
             if (interactive) std::cout << "exit" << std::endl;
             break;
         }
 
-        // Append the new line to our accumulation buffer
+        // Logic: 
+        // 1. If we are starting fresh (full_input empty) and user types '\', 
+        //    we MUST wait for the next line (PS2).
+        // 2. If the user hits ENTER on PS2 and the line is empty, POSIX says 
+        //    the backslash-newline is discarded.
+        
+        bool was_continuation = (!full_input.empty() && full_input.back() == '\\');
         full_input += line;
 
-        // Tokenize the current accumulated input
         Lexer lexer(full_input);
         std::vector<Token> tokens = lexer.tokenize();
 
-        // Handle empty input (just whitespace/newlines)
         if (tokens.empty()) {
-            if (full_input.find_first_not_of(" \t\n\r") == std::string::npos) {
-                full_input.clear();
+            // If the lexer found no words (e.g., just '\' followed by '\n')
+            // we check if we should reset or keep waiting.
+            if (line.empty() && was_continuation) {
+                full_input.clear(); // Reset to PS1 because the continuation was empty
+            } else if (full_input.back() == '\\') {
+                full_input += "\n"; // Keep waiting for PS2
             } else {
-                full_input += "\n";
+                full_input.clear(); // Just whitespace
             }
             continue;
         }
 
-        // Check if the command is syntactically complete (e.g., closed quotes/brackets)
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
-            full_input.clear(); // Reset for the next command
+            full_input.clear(); 
         } else {
-            // Command is incomplete; add a newline and loop back to show PS2
             full_input += "\n";
         }
     }
 }
+
 
 int main(int argc, char** argv) {
     shell_name = argv[0];

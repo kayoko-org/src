@@ -8,6 +8,8 @@
 #include <pwd.h>
 #include <map>
 #include <set>
+#include <vector>
+#include <string>
 
 // Link to globals defined in main.cc
 extern int last_status;
@@ -54,21 +56,19 @@ std::string Lexer::capture_exec(const std::string& cmd) {
 }
 
 /**
- * Reads a single word, handling quotes and variable expansion.
- * Single quotes ('') keep contents literal (supporting ksh-style PS1).
- * Double quotes ("") and unquoted text allow $VAR and `cmd` expansion.
+ * Reads a single word, handling quotes, expansion, and POSIX backslash rules.
  */
 std::string Lexer::read_word() {
     std::string word;
     char quote_char = 0; 
 
-    // 1. Check for Tilde Expansion at the very start
+    // 1. Tilde Expansion (Unquoted start only)
     if (pos_ < input_.length() && input_[pos_] == '~') {
         size_t tilde_pos = pos_ + 1;
         std::string user_name;
         while (tilde_pos < input_.length() && 
                !isspace(static_cast<unsigned char>(input_[tilde_pos])) && 
-               !strchr("/|><;&\"\'", input_[tilde_pos])) {
+               !strchr("/|><;&\"\'\\", input_[tilde_pos])) {
             user_name += input_[tilde_pos];
             tilde_pos++;
         }
@@ -92,7 +92,41 @@ std::string Lexer::read_word() {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // Handle Single Quotes: NO expansion happens inside
+        // 2. Handle Backslash based on POSIX context
+        if (c == '\\' && quote_char != '\'') { 
+            if (pos_ + 1 < input_.length()) {
+                char next = input_[pos_ + 1];
+                
+                if (next == '\n') {
+                    // Line continuation: Discard both and move on
+                    pos_ += 2;
+                    // If we haven't started a word yet, keep skipping
+                    if (word.empty() && quote_char == 0) continue; 
+                    else continue; 
+                }
+                
+                if (quote_char == '\"') {
+                    // Double Quote: \ only escapes $, `, ", \, and newline
+                    if (strchr("$`\"\\", next)) {
+                        word += next;
+                        pos_ += 2;
+                    } else {
+                        word += c; 
+                        pos_++;
+                    }
+                } else {
+                    // Unquoted: Escape literally
+                    word += next;
+                    pos_ += 2;
+                }
+                continue;
+            } else {
+                pos_++;
+                continue;
+            }
+        }
+
+        // 3. Single Quotes
         if (c == '\'' && quote_char == 0) {
             pos_++; 
             while (pos_ < input_.length() && input_[pos_] != '\'') {
@@ -103,20 +137,17 @@ std::string Lexer::read_word() {
             continue;
         }
 
-        // Handle Double Quotes: Expansion allowed
-        if (c == '\"' && quote_char == 0) {
-            quote_char = '\"';
-            pos_++;
-            continue;
-        } else if (c == '\"' && quote_char == '\"') {
-            quote_char = 0;
+        // 4. Double Quotes
+        if (c == '\"') {
+            if (quote_char == 0) quote_char = '\"';
+            else if (quote_char == '\"') quote_char = 0;
+            else word += c; 
             pos_++;
             continue;
         }
 
-        // Handle Command Substitution (Backticks)
-        // Expanded immediately UNLESS we are in single quotes (handled above)
-        if (c == '`') {
+        // 5. Backticks
+        if (c == '`' && quote_char != '\'') {
             pos_++;
             size_t start = pos_;
             while (pos_ < input_.length() && input_[pos_] != '`') {
@@ -128,28 +159,26 @@ std::string Lexer::read_word() {
             }
             std::string cmd = input_.substr(start, pos_ - start);
             if (pos_ < input_.length()) pos_++;
-            
             word += capture_exec(cmd);
             continue;
         }
 
-        // Break on delimiters if not inside quotes
-        if (quote_char == 0 && (isspace(static_cast<unsigned char>(c)) || strchr("|><;&", c))) break;
+        // Break on delimiters
+        if (quote_char == 0 && (isspace(static_cast<unsigned char>(c)) || strchr("|><;&", c))) {
+            break;
+        }
 
-        // Variable expansion
-        if (c == '$') {
+        // 6. Variable Expansion
+        if (c == '$' && quote_char != '\'') {
             pos_++;
-            if (pos_ >= input_.length() || 
-                isspace(static_cast<unsigned char>(input_[pos_])) || 
-                strchr("\"\'", input_[pos_])) {
+            if (pos_ >= input_.length() || isspace(static_cast<unsigned char>(input_[pos_])) || strchr("\"\'", input_[pos_])) {
                 word += '$';
             } else if (strchr("$?!", input_[pos_])) {
                 word += get_var_value(std::string(1, input_[pos_]));
                 pos_++;
             } else {
                 size_t start = pos_;
-                while (pos_ < input_.length() && 
-                      (isalnum(static_cast<unsigned char>(input_[pos_])) || input_[pos_] == '_')) {
+                while (pos_ < input_.length() && (isalnum(static_cast<unsigned char>(input_[pos_])) || input_[pos_] == '_')) {
                     pos_++;
                 }
                 word += get_var_value(input_.substr(start, pos_ - start));
@@ -170,18 +199,21 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // Skip whitespace
+        // 1. Skip whitespace AND Handle POSIX line continuation as "nothing"
         if (isspace(static_cast<unsigned char>(c))) {
             pos_++;
             continue;
         }
 
-        // 1. Handle Redirections with optional File Descriptors (e.g., 2>&1, 1>, >)
+        if (c == '\\' && pos_ + 1 < input_.length() && input_[pos_ + 1] == '\n') {
+            pos_ += 2;
+            continue; // Continue skipping to avoid creating empty tokens
+        }
+
+        // 2. Redirections
         if (isdigit(c) || c == '>' || c == '<') {
             size_t temp_pos = pos_;
             std::string fd_prefix = "";
-
-            // Check if there is a leading number (e.g., the '2' in '2>')
             if (isdigit(c)) {
                 while (temp_pos < input_.length() && isdigit(input_[temp_pos])) {
                     fd_prefix += input_[temp_pos];
@@ -189,15 +221,12 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
                 }
             }
 
-            // Check if the character after the optional number is a redirect op
             if (temp_pos < input_.length() && (input_[temp_pos] == '>' || input_[temp_pos] == '<')) {
                 char op = input_[temp_pos];
                 std::string full_op = fd_prefix + op;
                 temp_pos++;
-
                 TokenType type = (op == '>') ? TokenType::REDIRECT_OUT : TokenType::REDIRECT_IN;
 
-                // Check for Append (>>) or Duplicate (>&)
                 if (temp_pos < input_.length()) {
                     if (input_[temp_pos] == '>') {
                         full_op += '>';
@@ -205,20 +234,18 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
                         temp_pos++;
                     } else if (input_[temp_pos] == '&') {
                         full_op += '&';
-                        type = TokenType::REDIRECT_DUP; // You'll need this in your enum
+                        type = TokenType::REDIRECT_DUP;
                         temp_pos++;
                     }
                 }
-
                 tokens.push_back({type, full_op});
                 pos_ = temp_pos;
                 next_is_cmd = false;
                 continue;
             }
-            // If it was just a number NOT followed by > or <, let read_word handle it below
         }
 
-        // 2. Handle Control Operators
+        // 3. Control Operators
         if (c == '|') {
             tokens.push_back({TokenType::PIPE, "|"});
             pos_++;
@@ -228,22 +255,19 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             pos_++;
             next_is_cmd = true;
         } 
-        // 3. Handle General Words and Aliases
+        // 4. Words
         else {
             std::string val = read_word();
-            bool alias_trailing_space = false;
+            if (val.empty()) continue; 
 
-            // Alias Expansion Logic
+            bool alias_trailing_space = false;
             if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
                 std::string expanded = aliases[val];
                 alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');
-                
                 std::set<std::string> next_seen = seen;
                 next_seen.insert(val);
-
                 Lexer sub_lexer(expanded);
                 auto sub_tokens = sub_lexer.tokenize(next_seen);
-                
                 if (!sub_tokens.empty()) {
                     for (size_t i = 0; i < sub_tokens.size() - 1; ++i) {
                         tokens.push_back(sub_tokens[i]);
@@ -256,7 +280,6 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
 
             if (val.empty()) continue;
 
-            // Keyword identification
             TokenType type = TokenType::WORD;
             if (val == "if") { type = TokenType::IF; next_is_cmd = true; }
             else if (val == "then") { type = TokenType::THEN; next_is_cmd = true; }
@@ -265,9 +288,7 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             else if (val == "while") { type = TokenType::WHILE; next_is_cmd = true; }
             else if (val == "do") { type = TokenType::DO; next_is_cmd = true; }
             else if (val == "done") { type = TokenType::DONE; next_is_cmd = false; }
-            else {
-                next_is_cmd = alias_trailing_space; 
-            }
+            else { next_is_cmd = alias_trailing_space; }
 
             tokens.push_back({type, val});
         }
@@ -275,28 +296,16 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     return tokens;
 }
 
-/**
- * POSIX-compliant string expansion for prompts (PS1/PS2).
- * This continues reading until the entire input string is processed.
- */
 std::string Lexer::expand_string() {
     std::string result;
     while (pos_ < input_.length()) {
-        // 1. Skip leading whitespace but preserve it in the output
         while (pos_ < input_.length() && isspace(static_cast<unsigned char>(input_[pos_]))) {
             result += input_[pos_];
             pos_++;
         }
-
         if (pos_ >= input_.length()) break;
-
-        // 2. Use your existing logic to expand the next "chunk"
         result += read_word();
-
-        // 3. If we stopped at a delimiter (like > or |), add it manually
-        // and keep going. This is the key to fixing your PS1.
         if (pos_ < input_.length() && !isspace(static_cast<unsigned char>(input_[pos_]))) {
-            // Check if it's an operator that read_word() bailed on
             if (strchr("|><;&", input_[pos_])) {
                 result += input_[pos_];
                 pos_++;
