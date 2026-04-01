@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{title}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --accent: #f2c899;
+        --dark: #332211;
+        --bg-sidebar: #eeeeee;
+        --border-color: #999999;
+    }
+
+    * { 
+        box-sizing: border-box; 
+    }
+
+    body { 
+        font-family: 'Noto Sans', sans-serif; 
+        font-weight: 300; /* Thin font gauge */
+        margin: 0; 
+        padding: 0;
+        background-color: #ffffff;
+        color: #000000;
+    }
+
+    header {
+        background-color: var(--dark);
+        color: var(--accent);
+        padding: 10px 2%;
+        border-bottom: 3px solid var(--accent);
+        font-size: 1.2rem;
+        letter-spacing: 1px;
+    }
+
+    /* Container using percentages for 100% responsiveness */
+    .wrapper {
+        width: 100%;
+        overflow: hidden; /* Clearfix for floats */
+    }
+
+    nav { 
+        float: left;
+        width: 20%; /* Fluid width */
+        min-width: 180px;
+        background: var(--bg-sidebar); 
+        border-right: 1px solid var(--border-color);
+        padding: 20px 1%;
+        min-height: 100vh;
+    }
+
+    nav h3 {
+        font-weight: 300;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        background: var(--accent);
+        color: var(--dark);
+        padding: 3px 8px;
+        margin: 0 0 15px 0;
+        border: 1px solid var(--border-color);
+    }
+
+    nav ul { list-style: none; padding: 0; margin: 0; }
+    nav li { margin-bottom: 5px; border-bottom: 1px dotted var(--border-color); }
+    
+    nav a { 
+        color: var(--dark); 
+        text-decoration: none; 
+        font-size: 0.9rem;
+    }
+
+    nav a:hover { 
+        color: #000;
+        background: var(--accent);
+    }
+
+    main { 
+        float: left;
+        width: 80%; /* Fluid width */
+        padding: 30px 4%;
+    }
+
+    h1, h2, h3 { 
+        font-weight: 400; /* Slightly more than 300 for hierarchy, but not bold */
+        color: var(--dark); 
+        border-bottom: 1px solid var(--accent); 
+        padding-bottom: 5px;
+    }
+
+    pre {
+        background: #fafafa;
+        border: 1px solid var(--border-color);
+        border-left: 5px solid var(--accent);
+        padding: 15px;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+
+    code {
+        font-family: monospace;
+        background: #f0f0f0;
+        padding: 0 4px;
+    }
+
+    footer {
+        clear: both;
+        width: 100%;
+        text-align: center;
+        font-size: 0.75rem;
+        padding: 20px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-sidebar);
+    }
+
+    /* Traditional Responsive Breakpoint */
+    @media (max-width: 700px) {
+        nav, main {
+            float: none;
+            width: 100%;
+            min-width: 100%;
+            min-height: auto;
+            border-right: none;
+        }
+        nav {
+            border-bottom: 1px solid var(--border-color);
+        }
+    }
+
+
+    /* Clean, high-contrast link styling */
+a {
+    color: var(--dark);
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-underline-offset: 3px;
+    transition: all 0.1s ease;
+}
+
+a:hover {
+    color: #000;
+    background-color: var(--accent);
+    text-decoration: none;
+}
+
+a:active {
+    background-color: var(--border-color);
+}
+
+/* External link indicator (optional) */
+a[href^="http"]::after {
+    content: " ↗";
+    font-size: 0.7rem;
+    vertical-align: super;
+}
+
+</style>
+</head>
+<body>
+    <nav>
+        <strong>Navigation</strong><br><br>
+        {{sidebar}}
+    </nav>
+    <main>
+        <h1>{{title}}</h1>
+        {{header}}
+        <section>{{content}}</section>
+        {{footer}}
+    </main>
+</body>
+</html>
