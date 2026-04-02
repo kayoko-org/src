@@ -28,23 +28,25 @@ private:
 
     void enableRawMode() {
         if (!isatty(STDIN_FILENO)) return;
-        tcgetattr(STDIN_FILENO, &orig_termios);
+        if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) return;
+        
         struct termios raw = orig_termios;
         
         // Input: No break, no CR to NL, no parity, no strip, no flow control
         raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-        // Output: Preserve OPOST so \n still functions correctly across terminals
+        // Output: Preserve OPOST for newline translation
         raw.c_oflag |= OPOST; 
         // Control: 8-bit chars
         raw.c_cflag |= (CS8);
-        // Local: No echo, no canonical input, no extended functions, no signals
+        // Local: No echo, no canonical (line) mode, no extended functions, no signals (Ctrl-C/Z)
         raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
         
         raw.c_cc[VMIN] = 1;
         raw.c_cc[VTIME] = 0;
         
-        tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-        is_raw = true;
+        if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != -1) {
+            is_raw = true;
+        }
     }
 
     void disableRawMode() {
@@ -73,10 +75,7 @@ private:
     }
 
     void save_to_history(const std::string& line) {
-        // Skip empty lines or purely whitespace lines
         if (line.empty() || is_whitespace(line)) return;
-
-        // Skip if it's an exact duplicate of the previous command
         if (history.empty() || history.back() != line) {
             history.push_back(line);
             std::ofstream hf(history_file, std::ios::app);
@@ -86,14 +85,16 @@ private:
     }
 
     void refreshLine(const std::string& prompt, const std::string& buf, size_t pos) {
+        // \r: Carriage return to start of line
+        // \x1b[K: Clear from cursor to end of line
         write_out("\r\x1b[K" + prompt + buf);
+        // Move cursor back to the correct logical position if we aren't at the end
         if (pos < buf.size()) {
             write_out("\x1b[" + std::to_string(buf.size() - pos) + "D");
         }
     }
 
     void do_ksh_tab_complete(std::string& buf, size_t& pos, const std::string& prompt) {
-        // Literal tab if empty or preceded by space
         if (buf.empty() || (pos > 0 && isspace(static_cast<unsigned char>(buf[pos-1])))) {
             buf.insert(pos++, 1, '\t');
             return;
@@ -106,7 +107,7 @@ private:
         std::vector<std::string> matches;
         bool is_command = (start == 0); 
 
-        // 1. Path Search (if it's the first word)
+        // 1. PATH Completion
         if (is_command && search_term.find('/') == std::string::npos) {
             char* path_env = getenv("PATH");
             if (path_env) {
@@ -121,7 +122,7 @@ private:
                         while ((entry = readdir(d)) != NULL) {
                             if (std::string(entry->d_name).compare(0, search_term.size(), search_term) == 0) {
                                 std::string full = dir + "/" + entry->d_name;
-                                if (access(full.c_str(), X_OK) == 0) matches.push_back(full);
+                                if (access(full.c_str(), X_OK) == 0) matches.push_back(entry->d_name);
                             }
                         }
                         closedir(d);
@@ -132,7 +133,7 @@ private:
             }
         }
 
-        // 2. File Search (fallback or if it contains a slash)
+        // 2. File Completion
         if (matches.empty()) {
             std::string dir_path = ".", file_prefix = search_term;
             size_t last_slash = search_term.find_last_of("/");
@@ -169,7 +170,7 @@ private:
             pos = start + matches[0].size();
         } else {
             write_out("\n");
-            for (size_t i = 0; i < (size_t)matches.size(); ++i) {
+            for (size_t i = 0; i < matches.size(); ++i) {
                 write_out(std::to_string(i + 1) + ") " + matches[i] + "\n");
             }
             write_out(prompt + buf);
@@ -178,14 +179,8 @@ private:
     }
 
 public:
-    InteractiveReader() { 
-        load_history(); 
-    }
-
-    // RAII guarantees the terminal is restored if the shell crashes
-    ~InteractiveReader() {
-        disableRawMode();
-    }
+    InteractiveReader() { load_history(); }
+    ~InteractiveReader() { disableRawMode(); }
 
     std::string readline(const std::string& prompt) {
         enableRawMode();
@@ -195,37 +190,43 @@ public:
 
         while (true) {
             char c;
-            if (read(STDIN_FILENO, &c, 1) <= 0) break;
+            ssize_t nread = read(STDIN_FILENO, &c, 1);
+            if (nread <= 0) break;
 
             if (c == 9) { // TAB
                 do_ksh_tab_complete(buf, pos, prompt);
             } else if (c == '\r' || c == '\n') { // ENTER
                 write_out("\n");
                 save_to_history(buf);
-                break;
+                break; // Exit loop, return current buffer
             } else if (c == 127 || c == 8) { // BACKSPACE
-                if (pos > 0) buf.erase(--pos, 1);
-            } else if (c == 4) { // CTRL-D (EOF)
-                if (buf.empty()) { disableRawMode(); exit(0); }
-            } else if (c == 3) { // CTRL-C (SIGINT emulation)
+                if (pos > 0) {
+                    buf.erase(--pos, 1);
+                }
+            } else if (c == 4) { // CTRL-D
+                if (buf.empty()) {
+                    disableRawMode();
+                    exit(0);
+                }
+            } else if (c == 3) { // CTRL-C
                 buf.clear();
                 pos = 0;
                 write_out("^C\n" + prompt);
                 continue;
-            } else if (c == '\x1b') { // VT100 ESCAPE SEQUENCES
+            } else if (c == '\x1b') { // ESCAPE SEQUENCES
                 char seq[3];
                 if (read(STDIN_FILENO, &seq[0], 1) == 0) continue;
                 if (read(STDIN_FILENO, &seq[1], 1) == 0) continue;
 
                 if (seq[0] == '[') {
-                    if (seq[1] == 'A') { // Up (Scrollback)
+                    if (seq[1] == 'A') { // UP
                         if (!history.empty()) {
                             if (history_index == -1) history_index = history.size() - 1;
                             else if (history_index > 0) history_index--;
                             buf = history[history_index];
                             pos = buf.size();
                         }
-                    } else if (seq[1] == 'B') { // Down
+                    } else if (seq[1] == 'B') { // DOWN
                         if (history_index != -1 && history_index < (int)history.size() - 1) {
                             history_index++;
                             buf = history[history_index];
@@ -235,25 +236,22 @@ public:
                             buf = "";
                             pos = 0;
                         }
-                    } else if (seq[1] == 'C' && pos < buf.size()) pos++; // Right
-                    else if (seq[1] == 'D' && pos > 0) pos--; // Left
+                    } else if (seq[1] == 'C' && pos < buf.size()) pos++; // RIGHT
+                    else if (seq[1] == 'D' && pos > 0) pos--; // LEFT
                 }
-                // If it's an unrecognized escape sequence, we drop it.
             } else if (static_cast<unsigned char>(c) >= 32 && static_cast<unsigned char>(c) <= 126) {
-                // THE SANITY FILTER: Only insert standard printable ASCII.
-                // This drops high-bit junk, alt-codes, and weird multibyte fragments
-                // that would otherwise crash the lexer/parser downstream.
+                // Printable ASCII only
                 buf.insert(pos++, 1, c);
             }
             
             refreshLine(prompt, buf, pos);
         }
+        
         disableRawMode();
         return buf;
     }
 };
 
-// Singleton-esque wrapper so history state is preserved across commands
 std::string ksh_readline(const std::string& prompt) {
     static InteractiveReader reader;
     return reader.readline(prompt);

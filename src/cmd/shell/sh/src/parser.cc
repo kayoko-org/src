@@ -49,6 +49,7 @@ std::shared_ptr<Command> parse_if(ParserState& state);
 std::shared_ptr<Command> parse_while(ParserState& state);
 std::shared_ptr<SimpleCommand> parse_simple(ParserState& state);
 
+
 /**
  * Public: Returns true if the token stream represents a complete grammatical unit.
  * Used by the main loop to determine if PS2 (continuation prompt) is needed.
@@ -56,19 +57,27 @@ std::shared_ptr<SimpleCommand> parse_simple(ParserState& state);
 bool Parser::is_complete(const std::vector<Token>& tokens) {
     if (tokens.empty()) return true;
 
-    // Cannot end with a connector
+    // 1. Check for physical line continuation from Lexer (PRIORITY 1)
+    if (tokens.back().type == TokenType::CONTINUATION) {
+        return false;
+    }
+
+    // 2. Check for trailing logical operators (PRIORITY 2)
     TokenType last = tokens.back().type;
     if (last == TokenType::PIPE || last == TokenType::AND_IF || last == TokenType::OR_IF) {
         return false;
     }
 
+    // 3. Check for unclosed control structures (PRIORITY 3)
     int control_stack = 0;
     for (const auto& t : tokens) {
-        if (t.type == TokenType::IF || t.type == TokenType::WHILE) control_stack++;
-        else if (t.type == TokenType::FI || t.type == TokenType::DONE) control_stack--;
+        if (t.type == TokenType::IF || t.type == TokenType::WHILE) {
+            control_stack++;
+        } else if (t.type == TokenType::FI || t.type == TokenType::DONE) {
+            control_stack--;
+        }
     }
-    
-    // If stack > 0, we have unclosed if/while blocks
+
     return control_stack <= 0;
 }
 

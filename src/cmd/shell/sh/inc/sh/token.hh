@@ -9,6 +9,7 @@
 enum class TokenType {
     // Basic types
     WORD,           // Any string (ls, "hello", /tmp, $VAR)
+    CONTINUATION,
     
     // Operators
     PIPE,           // |

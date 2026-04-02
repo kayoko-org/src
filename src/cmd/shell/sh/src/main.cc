@@ -19,6 +19,7 @@ int last_status = 0;
 pid_t shell_pid;
 pid_t last_bg_pid = 0;
 const char* shell_name; 
+std::vector<std::string> shell_history;
 std::map<std::string, std::string> aliases;
 void run_shell(std::istream& input, bool interactive);
 
@@ -247,59 +248,115 @@ void load_shrc() {
     }
 }
 
+std::string expand_history(std::string input) {
+    if (shell_history.empty()) return input;
+
+    bool changed = false;
+    std::string last_cmd = shell_history.back();
+
+    // Remove trailing newline if present in the history entry
+    if (!last_cmd.empty() && last_cmd.back() == '\n') {
+        last_cmd.pop_back();
+    }
+
+    // 1. Expand !! (The whole previous line)
+    size_t pos = 0;
+    while ((pos = input.find("!!", pos)) != std::string::npos) {
+        if (pos > 0 && input[pos-1] == '\\') {
+            input.erase(pos-1, 1); // Literal !!
+            continue;
+        }
+        input.replace(pos, 2, last_cmd);
+        changed = true;
+        pos += last_cmd.length();
+    }
+
+    // 2. Expand !$ (The last argument)
+    pos = 0;
+    while ((pos = input.find("!$", pos)) != std::string::npos) {
+        if (pos > 0 && input[pos-1] == '\\') {
+            input.erase(pos-1, 1);
+            continue;
+        }
+        size_t last_space = last_cmd.find_last_of(" \t");
+        std::string last_arg = (last_space != std::string::npos) ?
+                                last_cmd.substr(last_space + 1) : last_cmd;
+        input.replace(pos, 2, last_arg);
+        changed = true;
+        pos += last_arg.length();
+    }
+
+    // Per POSIX, if a line is changed by expansion, print it to show the user
+    if (changed) {
+        std::cout << input << std::flush;
+    }
+    return input;
+}
 
 /**
- * Core loop logic extracted to handle both cin and file streams.
+ * Core loop logic to handle input, multi-line continuations, and execution.
  */
 void run_shell(std::istream& input, bool interactive) {
-    std::string line;
     std::string full_input;
+    std::string line;
 
     while (true) {
-        // 1. Determine Prompt and Read Input
+        // 1. Prompt and Read
         if (interactive && &input == &std::cin) {
-            // --- KSH RAW MODE INTERACTION ---
-            const char* prompt_var_name = full_input.empty() ? "PS1" : "PS2";
-            const char* prompt_raw_val = getenv(prompt_var_name);
-            std::string prompt_template = prompt_raw_val ? prompt_raw_val : (full_input.empty() ? "$ " : "> ");
+            const char* name = full_input.empty() ? "PS1" : "PS2";
+            const char* raw = getenv(name);
+            std::string templ = raw ? raw : (full_input.empty() ? "$ " : "> ");
 
-            Lexer prompt_lexer(prompt_template);
-            std::string expanded_prompt = prompt_lexer.expand_string();
+            Lexer prompt_lexer(templ);
+            line = ksh_readline(prompt_lexer.expand_string());
 
-            // ksh_readline prints the prompt and handles the raw TTY loop natively.
-            // Note: Ctrl-D (EOF) inside ksh_readline will natively call exit(0).
-            line = ksh_readline(expanded_prompt); 
-        } else {
-            // --- SCRIPT / PIPED MODE ---
-            if (!std::getline(input, line)) {
-                break; // EOF reached in script or pipe
+            if (line.empty() && input.eof()) {
+                if (interactive) std::cout << std::endl;
+                break;
             }
+        } else {
+            if (!std::getline(input, line)) break;
         }
 
-        // 2. Multi-line / Continuation Logic (Unchanged)
-        // If we are starting fresh and user types '\', wait for next line (PS2).
-        bool was_continuation = (!full_input.empty() && full_input.back() == '\\');
+        // 2. Accumulate input
         full_input += line;
 
-        Lexer lexer(full_input);
+        // 3. Tokenize
+        // We append "\n" so the Lexer's backslash-at-EOL logic can fire.
+        Lexer lexer(full_input + "\n");
         std::vector<Token> tokens = lexer.tokenize();
 
+        // --- THE FIX: Whitespace Reset ---
+        // If the user entered nothing or just whitespace, tokens will be empty.
+        // We clear full_input so the next loop starts fresh with PS1 ($).
         if (tokens.empty()) {
-            if (line.empty() && was_continuation) {
-                full_input.clear(); 
-            } else if (!full_input.empty() && full_input.back() == '\\') {
-                full_input += "\n"; 
-            } else {
-                full_input.clear(); 
-            }
+            full_input.clear();
             continue;
         }
 
-        // 3. Execution Logic
+        // 4. Handle Line Continuation (\)
+        if (tokens.back().type == TokenType::CONTINUATION) {
+            // Remove the literal '\' from the buffer so the next 
+            // line of text glues perfectly to the previous word.
+            if (!full_input.empty() && full_input.back() == '\\') {
+                full_input.pop_back();
+            }
+            // Do NOT clear full_input. Loop restarts, prompt becomes PS2 (>).
+            continue;
+        }
+
+        // 5. Completion and Execution
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
-            full_input.clear(); 
+
+            if (interactive && !full_input.empty()) {
+                shell_history.push_back(full_input);
+            }
+
+            full_input.clear(); // Command finished, back to PS1
         } else {
+            // For blocks like 'if' or 'while', we need a newline to 
+            // separate commands, but we stay in the PS2 state.
             full_input += "\n";
         }
     }

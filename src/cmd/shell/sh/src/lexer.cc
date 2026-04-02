@@ -11,7 +11,6 @@
 #include <vector>
 #include <string>
 
-// Link to globals defined in main.cc
 extern int last_status;
 extern pid_t shell_pid;
 extern pid_t last_bg_pid;
@@ -19,9 +18,6 @@ extern std::map<std::string, std::string> aliases;
 
 Lexer::Lexer(const std::string& input) : input_(input), pos_(0) {}
 
-/**
- * Resolves special shell variables ($?, $$, $!) and environment variables.
- */
 std::string Lexer::get_var_value(const std::string& var_name) {
     if (var_name == "?") {
         if (WIFEXITED(last_status)) return std::to_string(WEXITSTATUS(last_status));
@@ -35,9 +31,6 @@ std::string Lexer::get_var_value(const std::string& var_name) {
     return val ? std::string(val) : "";
 }
 
-/**
- * Handles backtick command substitution via popen.
- */
 std::string Lexer::capture_exec(const std::string& cmd) {
     std::string result;
     char buffer[128];
@@ -47,22 +40,17 @@ std::string Lexer::capture_exec(const std::string& cmd) {
         result += buffer;
     }
     pclose(pipe);
-    
-    // Remove trailing newlines
     while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
         result.pop_back();
     }
     return result;
 }
 
-/**
- * Reads a single word, handling quotes, expansion, and POSIX backslash rules.
- */
 std::string Lexer::read_word() {
     std::string word;
     char quote_char = 0; 
 
-    // 1. Tilde Expansion (Unquoted start only)
+    // 1. Tilde Expansion Logic
     if (pos_ < input_.length() && input_[pos_] == '~') {
         size_t tilde_pos = pos_ + 1;
         std::string user_name;
@@ -72,7 +60,6 @@ std::string Lexer::read_word() {
             user_name += input_[tilde_pos];
             tilde_pos++;
         }
-
         if (user_name.empty()) {
             char* home = std::getenv("HOME");
             word = home ? home : "";
@@ -89,24 +76,26 @@ std::string Lexer::read_word() {
         }
     }
 
+    // 2. Main Character Loop
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // 2. Handle Backslash based on POSIX context
+        // HANDLE ESCAPES AND CONTINUATIONS
         if (c == '\\' && quote_char != '\'') { 
             if (pos_ + 1 < input_.length()) {
                 char next = input_[pos_ + 1];
                 
+                // CRITICAL: Line Continuation Check
                 if (next == '\n') {
-                    // Line continuation: Discard both and move on
+                    // Consume both the backslash and the newline
                     pos_ += 2;
-                    // If we haven't started a word yet, keep skipping
-                    if (word.empty() && quote_char == 0) continue; 
-                    else continue; 
+                    // Return the word built so far. If word is empty, we return "".
+                    // This "interrupts" the lexer so tokenize() can handle the state.
+                    return word; 
                 }
                 
+                // Standard escaping inside double quotes
                 if (quote_char == '\"') {
-                    // Double Quote: \ only escapes $, `, ", \, and newline
                     if (strchr("$`\"\\", next)) {
                         word += next;
                         pos_ += 2;
@@ -115,18 +104,19 @@ std::string Lexer::read_word() {
                         pos_++;
                     }
                 } else {
-                    // Unquoted: Escape literally
+                    // Standard escaping in unquoted text
                     word += next;
                     pos_ += 2;
                 }
                 continue;
             } else {
+                // Lone backslash at the very end of the string
                 pos_++;
-                continue;
+                return word;
             }
         }
 
-        // 3. Single Quotes
+        // Handle Single Quotes
         if (c == '\'' && quote_char == 0) {
             pos_++; 
             while (pos_ < input_.length() && input_[pos_] != '\'') {
@@ -137,25 +127,21 @@ std::string Lexer::read_word() {
             continue;
         }
 
-        // 4. Double Quotes
+        // Handle Double Quotes
         if (c == '\"') {
             if (quote_char == 0) quote_char = '\"';
-            else if (quote_char == '\"') quote_char = 0;
-            else word += c; 
+            else quote_char = 0;
             pos_++;
             continue;
         }
 
-        // 5. Backticks
+        // Handle Backticks (Command Substitution)
         if (c == '`' && quote_char != '\'') {
             pos_++;
             size_t start = pos_;
             while (pos_ < input_.length() && input_[pos_] != '`') {
-                if (input_[pos_] == '\\' && pos_ + 1 < input_.length() && input_[pos_+1] == '`') {
-                    pos_ += 2;
-                } else {
-                    pos_++;
-                }
+                if (input_[pos_] == '\\' && pos_ + 1 < input_.length() && input_[pos_+1] == '`') pos_ += 2;
+                else pos_++;
             }
             std::string cmd = input_.substr(start, pos_ - start);
             if (pos_ < input_.length()) pos_++;
@@ -163,12 +149,7 @@ std::string Lexer::read_word() {
             continue;
         }
 
-        // Break on delimiters
-        if (quote_char == 0 && (isspace(static_cast<unsigned char>(c)) || strchr("|><;&", c))) {
-            break;
-        }
-
-        // 6. Variable Expansion
+        // Handle Variable Expansion
         if (c == '$' && quote_char != '\'') {
             pos_++;
             if (pos_ >= input_.length() || isspace(static_cast<unsigned char>(input_[pos_])) || strchr("\"\'", input_[pos_])) {
@@ -178,14 +159,18 @@ std::string Lexer::read_word() {
                 pos_++;
             } else {
                 size_t start = pos_;
-                while (pos_ < input_.length() && (isalnum(static_cast<unsigned char>(input_[pos_])) || input_[pos_] == '_')) {
-                    pos_++;
-                }
+                while (pos_ < input_.length() && (isalnum(static_cast<unsigned char>(input_[pos_])) || input_[pos_] == '_')) pos_++;
                 word += get_var_value(input_.substr(start, pos_ - start));
             }
             continue;
         }
 
+        // Word Termination (Delimiters)
+        if (quote_char == 0 && (isspace(static_cast<unsigned char>(c)) || strchr("|><;&", c))) {
+            break;
+        }
+
+        // Regular character
         word += c;
         pos_++;
     }
@@ -194,25 +179,34 @@ std::string Lexer::read_word() {
 
 std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     std::vector<Token> tokens;
-    bool next_is_cmd = true; 
+    bool next_is_cmd = true;
 
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // 1. Skip whitespace AND Handle POSIX line continuation as "nothing"
-        if (isspace(static_cast<unsigned char>(c))) {
+        // 1. Skip Whitespace/Carriage Returns
+        if (c == ' ' || c == '\t' || c == '\r') {
             pos_++;
             continue;
         }
 
+        // 2. Direct Continuation Check
+        // If the VERY NEXT thing is a continuation, return immediately.
         if (c == '\\' && pos_ + 1 < input_.length() && input_[pos_ + 1] == '\n') {
             pos_ += 2;
-            continue; // Continue skipping to avoid creating empty tokens
+            tokens.push_back({TokenType::CONTINUATION, "\\\n"});
+            return tokens;
         }
 
-        // 2. Redirections
-        if (isdigit(static_cast<unsigned char>(c)) || c == '>' || c == '<') {    
-	size_t temp_pos = pos_;
+        // 3. Skip Newlines (Literal)
+        if (c == '\n') {
+            pos_++;
+            continue;
+        }
+
+        // 4. Handle Redirections and Operators
+        if (isdigit(static_cast<unsigned char>(c)) || c == '>' || c == '<') {
+            size_t temp_pos = pos_;
             std::string fd_prefix = "";
             if (isdigit(c)) {
                 while (temp_pos < input_.length() && isdigit(input_[temp_pos])) {
@@ -245,67 +239,91 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             }
         }
 
-        // 3. Control Operators
-	if (c == '|') {
- 	   if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '|') {
-    	     tokens.push_back({TokenType::OR_IF, "||"});
-   	     pos_ += 2;
-    } else {
-        tokens.push_back({TokenType::PIPE, "|"});
-        pos_++;
-    }
-    next_is_cmd = true;
-	} else if (c == '&') {
-  	  if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '&') {
-    	     tokens.push_back({TokenType::AND_IF, "&&"});
-   	     pos_ += 2;
-    } else {
-        // Handle single '&' for background execution if your shell supports it
-        tokens.push_back({TokenType::AMP, "&"});
-        pos_++;
-    }
-    next_is_cmd = true;
-	} else if (c == ';') {
-  	   tokens.push_back({TokenType::SEMICOLON, ";"});
-           pos_++;
- 	   next_is_cmd = true;
-	}
-	// 4. Words
+        // 5. Pipes, Ampersands, Semicolons
+        if (c == '|') {
+            if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '|') {
+                tokens.push_back({TokenType::OR_IF, "||"});
+                pos_ += 2;
+            } else {
+                tokens.push_back({TokenType::PIPE, "|"});
+                pos_++;
+            }
+            next_is_cmd = true;
+        } else if (c == '&') {
+            if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '&') {
+                tokens.push_back({TokenType::AND_IF, "&&"});
+                pos_ += 2;
+            } else {
+                tokens.push_back({TokenType::AMP, "&"});
+                pos_++;
+            }
+            next_is_cmd = true;
+        } else if (c == ';') {
+            tokens.push_back({TokenType::SEMICOLON, ";"});
+            pos_++;
+            next_is_cmd = true;
+        } 
+        
+        // 6. Words, Keywords, and Multi-line Continuations
         else {
+            size_t pre_read_pos = pos_;
             std::string val = read_word();
-            if (val.empty()) continue; 
 
-            bool alias_trailing_space = false;
-            if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
-                std::string expanded = aliases[val];
-                alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');
-                std::set<std::string> next_seen = seen;
-                next_seen.insert(val);
-                Lexer sub_lexer(expanded);
-                auto sub_tokens = sub_lexer.tokenize(next_seen);
-                if (!sub_tokens.empty()) {
-                    for (size_t i = 0; i < sub_tokens.size() - 1; ++i) {
-                        tokens.push_back(sub_tokens[i]);
-                    }
-                    val = sub_tokens.back().value; 
-                } else {
-                    val = ""; 
+            // CHECK: Did read_word() stop because of a \ + \n?
+            // We verify by looking at the input string just before the current pos_.
+            if (pos_ >= 2 && input_[pos_-2] == '\\' && input_[pos_-1] == '\n') {
+                // If we found a word before the backslash (e.g., 'ls \'), push it.
+                if (!val.empty()) {
+                    tokens.push_back({TokenType::WORD, val});
                 }
+                // Push the continuation token and RETURN IMMEDIATELY.
+                // This tells main.cc to go to PS2.
+                tokens.push_back({TokenType::CONTINUATION, "\\\n"});
+                return tokens;
             }
 
-            if (val.empty()) continue;
+            // If no word was found and the pointer didn't move, avoid infinite loop
+            if (val.empty() && pos_ == pre_read_pos) {
+                pos_++;
+                continue;
+            }
 
-            TokenType type = TokenType::WORD;
-            if (val == "if") { type = TokenType::IF; next_is_cmd = true; }
-            else if (val == "then") { type = TokenType::THEN; next_is_cmd = true; }
-            else if (val == "else") { type = TokenType::ELSE; next_is_cmd = true; }
-            else if (val == "fi") { type = TokenType::FI; next_is_cmd = false; }
-            else if (val == "while") { type = TokenType::WHILE; next_is_cmd = true; }
-            else if (val == "do") { type = TokenType::DO; next_is_cmd = true; }
-            else if (val == "done") { type = TokenType::DONE; next_is_cmd = false; }
-            else { next_is_cmd = alias_trailing_space; }
+            // If we have a valid word, handle aliases and keywords
+            if (!val.empty()) {
+                bool alias_trailing_space = false;
+                if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
+                    std::string expanded = aliases[val];
+                    alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');
+                    std::set<std::string> next_seen = seen;
+                    next_seen.insert(val);
 
-            tokens.push_back({type, val});
+                    Lexer sub_lexer(expanded);
+                    auto sub_tokens = sub_lexer.tokenize(next_seen);
+                    if (!sub_tokens.empty()) {
+                        for (size_t i = 0; i < sub_tokens.size() - 1; ++i) {
+                            tokens.push_back(sub_tokens[i]);
+                        }
+                        val = sub_tokens.back().value;
+                    } else {
+                        val = "";
+                    }
+                }
+
+                if (val.empty()) continue;
+
+                // Keyword Mapping
+                TokenType type = TokenType::WORD;
+                if (val == "if") { type = TokenType::IF; next_is_cmd = true; }
+                else if (val == "then") { type = TokenType::THEN; next_is_cmd = true; }
+                else if (val == "else") { type = TokenType::ELSE; next_is_cmd = true; }
+                else if (val == "fi") { type = TokenType::FI; next_is_cmd = false; }
+                else if (val == "while") { type = TokenType::WHILE; next_is_cmd = true; }
+                else if (val == "do") { type = TokenType::DO; next_is_cmd = true; }
+                else if (val == "done") { type = TokenType::DONE; next_is_cmd = false; }
+                else { next_is_cmd = alias_trailing_space; }
+
+                tokens.push_back({type, val});
+            }
         }
     }
     return tokens;
