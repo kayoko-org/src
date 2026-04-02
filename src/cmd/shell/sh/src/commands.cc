@@ -100,3 +100,31 @@ int SimpleCommand::execute(bool fork_process) {
         return 0; // Execution never reaches here
     }
 }
+
+
+/**
+ * Executes a logical AND (&&) or OR (||) command sequence.
+ */
+int LogicalCommand::execute(bool fork_process) {
+    // 1. Execute the left-hand command first
+    int status = left->execute(fork_process);
+    
+    // Update global status so the right-hand command (or variables like $?) 
+    // sees the result of the first command immediately.
+    last_status = status;
+
+    if (is_and) {
+        // AND (&&): Only execute right if left succeeded (status 0)
+        if (status == 0) {
+            return right->execute(fork_process);
+        }
+    } else {
+        // OR (||): Only execute right if left failed (status != 0)
+        if (status != 0) {
+            return right->execute(fork_process);
+        }
+    }
+
+    // If we short-circuited, return the status of the left command
+    return status;
+}

@@ -17,7 +17,10 @@ enum class TokenType {
     REDIRECT_OUT,   // >
     APPEND,         // >>
     REDIRECT_DUP,   // >& or <& (e.g., 2>&1)
-    
+    AND_IF,         // &&
+    OR_IF,          // ||
+    AMP,            // & (for background processes)
+
     // Control Flow
     IF,             // if
     THEN,           // then

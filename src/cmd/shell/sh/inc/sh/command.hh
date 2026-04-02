@@ -40,4 +40,16 @@ public:
     int execute(bool fork_process = true) override;
 };
 
+// Represents a logical grouping (CMD1 && CMD2 or CMD1 || CMD2)
+class LogicalCommand : public Command {
+public:
+    std::shared_ptr<Command> left;
+    std::shared_ptr<Command> right;
+    
+    // True if operator is '&&', False if operator is '||'
+    bool is_and; 
+
+    int execute(bool fork_process = true) override;
+};
+
 #endif

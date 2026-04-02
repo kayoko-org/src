@@ -246,16 +246,31 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
         }
 
         // 3. Control Operators
-        if (c == '|') {
-            tokens.push_back({TokenType::PIPE, "|"});
-            pos_++;
-            next_is_cmd = true;
-        } else if (c == ';') {
-            tokens.push_back({TokenType::SEMICOLON, ";"});
-            pos_++;
-            next_is_cmd = true;
-        } 
-        // 4. Words
+	if (c == '|') {
+ 	   if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '|') {
+    	     tokens.push_back({TokenType::OR_IF, "||"});
+   	     pos_ += 2;
+    } else {
+        tokens.push_back({TokenType::PIPE, "|"});
+        pos_++;
+    }
+    next_is_cmd = true;
+	} else if (c == '&') {
+  	  if (pos_ + 1 < input_.length() && input_[pos_ + 1] == '&') {
+    	     tokens.push_back({TokenType::AND_IF, "&&"});
+   	     pos_ += 2;
+    } else {
+        // Handle single '&' for background execution if your shell supports it
+        tokens.push_back({TokenType::AMP, "&"});
+        pos_++;
+    }
+    next_is_cmd = true;
+	} else if (c == ';') {
+  	   tokens.push_back({TokenType::SEMICOLON, ";"});
+           pos_++;
+ 	   next_is_cmd = true;
+	}
+	// 4. Words
         else {
             std::string val = read_word();
             if (val.empty()) continue; 

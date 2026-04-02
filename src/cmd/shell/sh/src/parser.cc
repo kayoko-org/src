@@ -42,6 +42,7 @@ struct ParserState {
 };
 
 // Forward declarations for recursive descent
+std::shared_ptr<Command> parse_logical(ParserState& state);
 std::shared_ptr<Command> parse_pipeline(ParserState& state);
 std::shared_ptr<Command> parse_command(ParserState& state);
 std::shared_ptr<Command> parse_if(ParserState& state);
@@ -55,8 +56,11 @@ std::shared_ptr<SimpleCommand> parse_simple(ParserState& state);
 bool Parser::is_complete(const std::vector<Token>& tokens) {
     if (tokens.empty()) return true;
 
-    // A pipeline cannot end with a trailing pipe character
-    if (tokens.back().type == TokenType::PIPE) return false;
+    // Cannot end with a connector
+    TokenType last = tokens.back().type;
+    if (last == TokenType::PIPE || last == TokenType::AND_IF || last == TokenType::OR_IF) {
+        return false;
+    }
 
     int control_stack = 0;
     for (const auto& t : tokens) {
@@ -74,7 +78,33 @@ bool Parser::is_complete(const std::vector<Token>& tokens) {
 std::shared_ptr<Command> Parser::parse(const std::vector<Token>& tokens) {
     if (tokens.empty()) return nullptr;
     ParserState state{tokens, 0};
-    return parse_pipeline(state);
+    return parse_logical(state);
+}
+
+/**
+ * Parses logical operators: pipeline && pipeline || pipeline
+ */
+std::shared_ptr<Command> parse_logical(ParserState& state) {
+    auto left = parse_pipeline(state);
+    if (!left) return nullptr;
+
+    while (state.peek().type == TokenType::AND_IF || state.peek().type == TokenType::OR_IF) {
+        TokenType op_type = state.peek().type;
+        state.advance(); // consume && or ||
+
+        auto right = parse_pipeline(state);
+        if (!right) return nullptr; // Syntax error: trailing operator
+
+        auto logical_cmd = std::make_shared<LogicalCommand>();
+        logical_cmd->left = left;
+        logical_cmd->right = right;
+        logical_cmd->is_and = (op_type == TokenType::AND_IF);
+        
+        // Wrap the result to allow chaining (e.g., A && B || C)
+        left = logical_cmd;
+    }
+
+    return left;
 }
 
 /**
@@ -120,24 +150,24 @@ std::shared_ptr<Command> parse_command(ParserState& state) {
 }
 
 /**
- * Parses IF blocks: if pipeline then pipeline [else pipeline] fi
+ * Parses IF blocks: if logical then logical [else logical] fi
  */
 std::shared_ptr<Command> parse_if(ParserState& state) {
     auto node = std::make_shared<IfCommand>();
     
     state.advance(); // consume 'if'
     
-    node->condition = parse_pipeline(state);
+    node->condition = parse_logical(state);
     if (!node->condition) return nullptr;
     
     if (!state.expect(TokenType::THEN)) return nullptr;
     
-    node->then_part = parse_pipeline(state);
+    node->then_part = parse_logical(state);
     if (!node->then_part) return nullptr;
 
     if (state.peek().type == TokenType::ELSE) {
         state.advance(); // consume 'else'
-        node->else_part = parse_pipeline(state);
+        node->else_part = parse_logical(state);
         if (!node->else_part) return nullptr;
     }
 
@@ -147,19 +177,19 @@ std::shared_ptr<Command> parse_if(ParserState& state) {
 }
 
 /**
- * Parses WHILE blocks: while pipeline do pipeline done
+ * Parses WHILE blocks: while logical do logical done
  */
 std::shared_ptr<Command> parse_while(ParserState& state) {
     auto node = std::make_shared<WhileCommand>();
     
     state.advance(); // consume 'while'
     
-    node->condition = parse_pipeline(state);
+    node->condition = parse_logical(state);
     if (!node->condition) return nullptr;
     
     if (!state.expect(TokenType::DO)) return nullptr;
     
-    node->body = parse_pipeline(state);
+    node->body = parse_logical(state);
     if (!node->body) return nullptr;
 
     if (!state.expect(TokenType::DONE)) return nullptr;
@@ -179,9 +209,10 @@ std::shared_ptr<SimpleCommand> parse_simple(ParserState& state) {
         const Token& t = state.peek();
 
         // Terminate simple command on separators or control keywords
-        if (t.type == TokenType::PIPE || t.type == TokenType::SEMICOLON ||
-            t.type == TokenType::THEN || t.type == TokenType::ELSE ||
-            t.type == TokenType::FI   || t.type == TokenType::DO   ||
+        if (t.type == TokenType::PIPE   || t.type == TokenType::SEMICOLON ||
+            t.type == TokenType::AND_IF || t.type == TokenType::OR_IF     ||
+            t.type == TokenType::THEN   || t.type == TokenType::ELSE      ||
+            t.type == TokenType::FI     || t.type == TokenType::DO        ||
             t.type == TokenType::DONE) {
 
             if (t.type == TokenType::SEMICOLON) state.advance();
