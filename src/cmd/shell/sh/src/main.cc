@@ -332,25 +332,35 @@ void run_shell(std::istream& input, bool interactive) {
             continue;
         }
 
-        // 5. THE REFINED FIX: Handle Line Continuation (\)
-        if (tokens.back().type == TokenType::CONTINUATION) {
-            size_t last_slash = full_input.find_last_of('\\');
-            if (last_slash != std::string::npos) {
-                // Remove the backslash AND any trailing whitespace on that line
-                full_input.erase(last_slash);
-            }
-            
-            continue; 
-        }
 
-        // 6. Completion and Execution
+	// 5. THE REFINED FIX: Handle Line Continuation (\)
+	if (!tokens.empty() && tokens.back().type == TokenType::CONTINUATION) {
+  	  size_t last_slash = full_input.find_last_of('\\');
+   	 if (last_slash != std::string::npos) {
+      	  full_input.erase(last_slash);
+    	}
+
+    // THE GHOST FIX: Keep the state active even if buffer is "empty"
+    if (full_input.empty()) {
+        full_input = " ";
+  	  }
+  	  continue;
+	}
+
+	// 6. Empty Check (Now only clears on a true 'Enter' with no command)
+	if (tokens.empty()) {
+    	full_input.clear();
+  	  continue;
+	}
+
+        // 7. Completion and Execution
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
 
             if (interactive && !full_input.empty()) {
                 shell_history.push_back(full_input);
             }
-            full_input.clear(); 
+            full_input.clear();
         } else {
             // For blocks (if/while), the newline acts as a command separator
             full_input += "\n";

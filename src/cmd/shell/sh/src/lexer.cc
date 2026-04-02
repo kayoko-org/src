@@ -184,29 +184,33 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-
-	// --- STEP 1: THE CRITICAL INTERCEPT ---
-        // If the current char is '\' and the next is '\n',
-        // we MUST exit immediately with a CONTINUATION token.
+        // --- PRIORITY 1: THE CONTINUATION INTERCEPT ---
+        // This MUST happen before we skip whitespace.
+        // If the very first thing we see is \ followed by \n,
+        // it's a continuation, even if the token list is empty.
         if (c == '\\' && pos_ + 1 < input_.length() && input_[pos_ + 1] == '\n') {
             pos_ += 2; // Consume both '\' and '\n'
             tokens.push_back({TokenType::CONTINUATION, "\\\n"});
-            return tokens; // Stop tokenizing and return to the shell loop
+            return tokens; // Return immediately to let run_shell handle the prompt
         }
 
-        // --- STEP 2: Skip Whitespace ---
+        // --- PRIORITY 2: Skip Non-Newline Whitespace ---
+        // We skip spaces/tabs/returns, but NOT \n yet,
+        // because \n is a command terminator or part of a block.
         if (c == ' ' || c == '\t' || c == '\r') {
             pos_++;
             continue;
         }
 
-        // --- STEP 3: Skip Literal Newlines ---
+        // --- PRIORITY 3: Handle Actual Newlines ---
         if (c == '\n') {
             pos_++;
+            // Only add a newline token if the previous token wasn't already a terminator
+            // This prevents "empty" commands from cluttering the parser.
             continue;
         }
 
-        // 4. Handle Redirections and Operators
+        // 4. Handle Redirections and Operators (Standard logic)
         if (isdigit(static_cast<unsigned char>(c)) || c == '>' || c == '<') {
             size_t temp_pos = pos_;
             std::string fd_prefix = "";
@@ -264,14 +268,14 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             tokens.push_back({TokenType::SEMICOLON, ";"});
             pos_++;
             next_is_cmd = true;
-        } 
-        
+        }
+
         // 6. Words, Keywords, and Mid-Word Continuations
         else {
             size_t pre_read_pos = pos_;
             std::string val = read_word();
 
-            // Check if read_word() stopped because it hit a mid-word \ + \n jump.
+            // RE-CHECK: If read_word() hit a backslash-newline and stopped
             if (pos_ >= 2 && input_[pos_-2] == '\\' && input_[pos_-1] == '\n') {
                 if (!val.empty()) {
                     tokens.push_back({TokenType::WORD, val});
@@ -280,7 +284,6 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
                 return tokens;
             }
 
-            // Prevent infinite loops if nothing was read and pos didn't move
             if (val.empty() && pos_ == pre_read_pos) {
                 pos_++;
                 continue;
@@ -288,7 +291,7 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
 
             if (!val.empty()) {
                 bool alias_trailing_space = false;
-                
+
                 // Alias Expansion
                 if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
                     std::string expanded = aliases[val];
