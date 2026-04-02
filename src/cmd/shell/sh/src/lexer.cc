@@ -211,8 +211,8 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
         }
 
         // 2. Redirections
-        if (isdigit(c) || c == '>' || c == '<') {
-            size_t temp_pos = pos_;
+        if (isdigit(static_cast<unsigned char>(c)) || c == '>' || c == '<') {    
+	size_t temp_pos = pos_;
             std::string fd_prefix = "";
             if (isdigit(c)) {
                 while (temp_pos < input_.length() && isdigit(input_[temp_pos])) {

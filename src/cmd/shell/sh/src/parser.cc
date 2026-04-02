@@ -232,9 +232,10 @@ std::shared_ptr<SimpleCommand> parse_simple(ParserState& state) {
 
             // Look-back: Check if the previous argument was just a single digit.
             // If so, it's likely the src_fd for this redirection (e.g., the '1' in '1>&2').
-            if (!cmd->args.empty() && cmd->args.back().size() == 1 && std::isdigit(cmd->args.back()[0])) {
-                manual_fd = cmd->args.back()[0] - '0';
-                cmd->args.pop_back(); // Remove it from arguments
+        	if (!cmd->args.empty() && cmd->args.back().size() == 1 && 
+   		 std::isdigit(static_cast<unsigned char>(cmd->args.back()[0]))) {    
+	           manual_fd = cmd->args.back()[0] - '0';
+                   cmd->args.pop_back(); // Remove it from arguments
             }
 
             // 1. Determine the source FD and RedirType

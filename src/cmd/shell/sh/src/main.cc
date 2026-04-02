@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <cstring>
 
+#include <sh/interactive.hh>
 #include <sh/lexer.hh>
 #include <sh/parser.hh>
 
@@ -212,8 +213,8 @@ void execute_tokens(const std::vector<Token>& tokens) {
     TokenType first = tokens[0].type;
     if (first == TokenType::FI || first == TokenType::DONE || 
         first == TokenType::THEN || first == TokenType::DO) {
-        std::cerr << shell_name << ": syntax error near unexpected token '" 
-                  << tokens[0].value << "'" << std::endl;
+        std::cerr << shell_name << ": syntax error: `" 
+                  << tokens[0].value << "' unexpected" << std::endl;
         last_status = 2;
         return;
     }
@@ -255,27 +256,28 @@ void run_shell(std::istream& input, bool interactive) {
     std::string full_input;
 
     while (true) {
-        if (interactive) {
+        // 1. Determine Prompt and Read Input
+        if (interactive && &input == &std::cin) {
+            // --- KSH RAW MODE INTERACTION ---
             const char* prompt_var_name = full_input.empty() ? "PS1" : "PS2";
             const char* prompt_raw_val = getenv(prompt_var_name);
             std::string prompt_template = prompt_raw_val ? prompt_raw_val : (full_input.empty() ? "$ " : "> ");
 
             Lexer prompt_lexer(prompt_template);
             std::string expanded_prompt = prompt_lexer.expand_string();
-            std::cout << expanded_prompt << std::flush;
+
+            // ksh_readline prints the prompt and handles the raw TTY loop natively.
+            // Note: Ctrl-D (EOF) inside ksh_readline will natively call exit(0).
+            line = ksh_readline(expanded_prompt); 
+        } else {
+            // --- SCRIPT / PIPED MODE ---
+            if (!std::getline(input, line)) {
+                break; // EOF reached in script or pipe
+            }
         }
 
-        if (!std::getline(input, line)) {
-            if (interactive) std::cout << "exit" << std::endl;
-            break;
-        }
-
-        // Logic: 
-        // 1. If we are starting fresh (full_input empty) and user types '\', 
-        //    we MUST wait for the next line (PS2).
-        // 2. If the user hits ENTER on PS2 and the line is empty, POSIX says 
-        //    the backslash-newline is discarded.
-        
+        // 2. Multi-line / Continuation Logic (Unchanged)
+        // If we are starting fresh and user types '\', wait for next line (PS2).
         bool was_continuation = (!full_input.empty() && full_input.back() == '\\');
         full_input += line;
 
@@ -283,18 +285,17 @@ void run_shell(std::istream& input, bool interactive) {
         std::vector<Token> tokens = lexer.tokenize();
 
         if (tokens.empty()) {
-            // If the lexer found no words (e.g., just '\' followed by '\n')
-            // we check if we should reset or keep waiting.
             if (line.empty() && was_continuation) {
-                full_input.clear(); // Reset to PS1 because the continuation was empty
-            } else if (full_input.back() == '\\') {
-                full_input += "\n"; // Keep waiting for PS2
+                full_input.clear(); 
+            } else if (!full_input.empty() && full_input.back() == '\\') {
+                full_input += "\n"; 
             } else {
-                full_input.clear(); // Just whitespace
+                full_input.clear(); 
             }
             continue;
         }
 
+        // 3. Execution Logic
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
             full_input.clear(); 
@@ -303,7 +304,6 @@ void run_shell(std::istream& input, bool interactive) {
         }
     }
 }
-
 
 int main(int argc, char** argv) {
     shell_name = argv[0];
