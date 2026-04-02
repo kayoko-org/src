@@ -184,21 +184,23 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
     while (pos_ < input_.length()) {
         char c = input_[pos_];
 
-        // 1. Skip Whitespace/Carriage Returns
+
+	// --- STEP 1: THE CRITICAL INTERCEPT ---
+        // If the current char is '\' and the next is '\n',
+        // we MUST exit immediately with a CONTINUATION token.
+        if (c == '\\' && pos_ + 1 < input_.length() && input_[pos_ + 1] == '\n') {
+            pos_ += 2; // Consume both '\' and '\n'
+            tokens.push_back({TokenType::CONTINUATION, "\\\n"});
+            return tokens; // Stop tokenizing and return to the shell loop
+        }
+
+        // --- STEP 2: Skip Whitespace ---
         if (c == ' ' || c == '\t' || c == '\r') {
             pos_++;
             continue;
         }
 
-        // 2. Direct Continuation Check
-        // If the VERY NEXT thing is a continuation, return immediately.
-        if (c == '\\' && pos_ + 1 < input_.length() && input_[pos_ + 1] == '\n') {
-            pos_ += 2;
-            tokens.push_back({TokenType::CONTINUATION, "\\\n"});
-            return tokens;
-        }
-
-        // 3. Skip Newlines (Literal)
+        // --- STEP 3: Skip Literal Newlines ---
         if (c == '\n') {
             pos_++;
             continue;
@@ -264,33 +266,30 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             next_is_cmd = true;
         } 
         
-        // 6. Words, Keywords, and Multi-line Continuations
+        // 6. Words, Keywords, and Mid-Word Continuations
         else {
             size_t pre_read_pos = pos_;
             std::string val = read_word();
 
-            // CHECK: Did read_word() stop because of a \ + \n?
-            // We verify by looking at the input string just before the current pos_.
+            // Check if read_word() stopped because it hit a mid-word \ + \n jump.
             if (pos_ >= 2 && input_[pos_-2] == '\\' && input_[pos_-1] == '\n') {
-                // If we found a word before the backslash (e.g., 'ls \'), push it.
                 if (!val.empty()) {
                     tokens.push_back({TokenType::WORD, val});
                 }
-                // Push the continuation token and RETURN IMMEDIATELY.
-                // This tells main.cc to go to PS2.
                 tokens.push_back({TokenType::CONTINUATION, "\\\n"});
                 return tokens;
             }
 
-            // If no word was found and the pointer didn't move, avoid infinite loop
+            // Prevent infinite loops if nothing was read and pos didn't move
             if (val.empty() && pos_ == pre_read_pos) {
                 pos_++;
                 continue;
             }
 
-            // If we have a valid word, handle aliases and keywords
             if (!val.empty()) {
                 bool alias_trailing_space = false;
+                
+                // Alias Expansion
                 if (next_is_cmd && aliases.count(val) && seen.find(val) == seen.end()) {
                     std::string expanded = aliases[val];
                     alias_trailing_space = (!expanded.empty() && expanded.back() == ' ');

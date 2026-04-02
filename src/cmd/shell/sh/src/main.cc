@@ -301,7 +301,7 @@ void run_shell(std::istream& input, bool interactive) {
     std::string line;
 
     while (true) {
-        // 1. Prompt and Read
+        // 1. Prompt Logic
         if (interactive && &input == &std::cin) {
             const char* name = full_input.empty() ? "PS1" : "PS2";
             const char* raw = getenv(name);
@@ -310,7 +310,7 @@ void run_shell(std::istream& input, bool interactive) {
             Lexer prompt_lexer(templ);
             line = ksh_readline(prompt_lexer.expand_string());
 
-            if (line.empty() && input.eof()) {
+            if (line.empty() && std::cin.eof()) {
                 if (interactive) std::cout << std::endl;
                 break;
             }
@@ -318,49 +318,47 @@ void run_shell(std::istream& input, bool interactive) {
             if (!std::getline(input, line)) break;
         }
 
-        // 2. Accumulate input
+        // 2. Accumulate
         full_input += line;
 
         // 3. Tokenize
-        // We append "\n" so the Lexer's backslash-at-EOL logic can fire.
+        // The Lexer needs this \n to trigger the backslash-at-EOL detection
         Lexer lexer(full_input + "\n");
         std::vector<Token> tokens = lexer.tokenize();
 
-        // --- THE FIX: Whitespace Reset ---
-        // If the user entered nothing or just whitespace, tokens will be empty.
-        // We clear full_input so the next loop starts fresh with PS1 ($).
+        // 4. Empty/Whitespace Check
         if (tokens.empty()) {
             full_input.clear();
             continue;
         }
 
-        // 4. Handle Line Continuation (\)
+        // 5. THE REFINED FIX: Handle Line Continuation (\)
         if (tokens.back().type == TokenType::CONTINUATION) {
-            // Remove the literal '\' from the buffer so the next 
-            // line of text glues perfectly to the previous word.
-            if (!full_input.empty() && full_input.back() == '\\') {
-                full_input.pop_back();
+            size_t last_slash = full_input.find_last_of('\\');
+            if (last_slash != std::string::npos) {
+                // Remove the backslash AND any trailing whitespace on that line
+                full_input.erase(last_slash);
             }
-            // Do NOT clear full_input. Loop restarts, prompt becomes PS2 (>).
-            continue;
+            
+            continue; 
         }
 
-        // 5. Completion and Execution
+        // 6. Completion and Execution
         if (Parser::is_complete(tokens)) {
             execute_tokens(tokens);
 
             if (interactive && !full_input.empty()) {
                 shell_history.push_back(full_input);
             }
-
-            full_input.clear(); // Command finished, back to PS1
+            full_input.clear(); 
         } else {
-            // For blocks like 'if' or 'while', we need a newline to 
-            // separate commands, but we stay in the PS2 state.
+            // For blocks (if/while), the newline acts as a command separator
             full_input += "\n";
         }
     }
 }
+
+
 
 int main(int argc, char** argv) {
     shell_name = argv[0];
