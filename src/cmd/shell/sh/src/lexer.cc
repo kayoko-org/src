@@ -210,6 +210,17 @@ std::vector<Token> Lexer::tokenize(std::set<std::string> seen) {
             continue;
         }
 
+	// --- PRIORITY 4: Handle Comments (#) ---
+	if (c == '#') {
+ 	   // A comment consumes everything until the end of the line (or input)
+  	  while (pos_ < input_.length() && input_[pos_] != '\n') {
+ 	       pos_++;
+	    }
+ 	   // We don't return a token for comments; just continue the loop
+ 	   // This effectively "eats" the comment.
+	    continue;
+	}
+
         // 4. Handle Redirections and Operators (Standard logic)
         if (isdigit(static_cast<unsigned char>(c)) || c == '>' || c == '<') {
             size_t temp_pos = pos_;

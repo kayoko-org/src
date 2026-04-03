@@ -95,19 +95,21 @@ private:
     }
 
     void do_ksh_tab_complete(std::string& buf, size_t& pos, const std::string& prompt) {
+        // 1. Handle empty buffer or trailing space
         if (buf.empty() || (pos > 0 && isspace(static_cast<unsigned char>(buf[pos-1])))) {
             buf.insert(pos++, 1, '\t');
             return;
         }
 
+        // 2. Identify the word being completed
         size_t start = buf.find_last_of(" \t", pos - 1);
         start = (start == std::string::npos) ? 0 : start + 1;
         std::string search_term = buf.substr(start, pos - start);
 
         std::vector<std::string> matches;
-        bool is_command = (start == 0); 
+        bool is_command = (start == 0);
 
-        // 1. PATH Completion
+        // 3. PATH Completion (Commands)
         if (is_command && search_term.find('/') == std::string::npos) {
             char* path_env = getenv("PATH");
             if (path_env) {
@@ -133,7 +135,7 @@ private:
             }
         }
 
-        // 2. File Completion
+        // 4. File Completion (Paths & local files)
         if (matches.empty()) {
             std::string dir_path = ".", file_prefix = search_term;
             size_t last_slash = search_term.find_last_of("/");
@@ -159,24 +161,49 @@ private:
             }
         }
 
+        // 5. Clean up the matches list
         std::sort(matches.begin(), matches.end());
         matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
 
         if (matches.empty()) return;
 
-        if (matches.size() == 1) {
-            buf.erase(start, pos - start);
-            buf.insert(start, matches[0]);
-            pos = start + matches[0].size();
-        } else {
+        // 6. CALCULATE LONGEST COMMON PREFIX (LCP)
+        std::string lcp = matches[0];
+        for (size_t i = 1; i < matches.size(); ++i) {
+            size_t j = 0;
+            // Compare characters until a mismatch is found or we hit the end of the shortest string
+            while (j < lcp.size() && j < matches[i].size() && lcp[j] == matches[i][j]) {
+                j++;
+            }
+            lcp = lcp.substr(0, j); // Shrink the common prefix
+        }
+
+        // 7. ADVANCE THE BUFFER TO THE COMMON PREFIX
+        size_t last_slash = search_term.find_last_of("/");
+        size_t replace_start = start + (last_slash == std::string::npos ? 0 : last_slash + 1);
+        size_t current_len = pos - replace_start;
+
+        if (lcp.size() > current_len) {
+            buf.erase(replace_start, current_len);
+            buf.insert(replace_start, lcp);
+            pos = replace_start + lcp.size();
+        }
+
+        // 8. DISPLAY REMAINING OPTIONS IF AMBIGUOUS
+        if (matches.size() > 1) {
             write_out("\n");
             for (size_t i = 0; i < matches.size(); ++i) {
                 write_out(std::to_string(i + 1) + ") " + matches[i] + "\n");
             }
+            // Reprint the prompt and the updated buffer
             write_out(prompt + buf);
-            if (pos < buf.size()) write_out("\x1b[" + std::to_string(buf.size() - pos) + "D");
+            // Fix the cursor position visually if it isn't at the end of the line
+            if (pos < buf.size()) {
+                write_out("\x1b[" + std::to_string(buf.size() - pos) + "D");
+            }
         }
     }
+
 
 public:
     InteractiveReader() { load_history(); }
@@ -243,10 +270,10 @@ public:
                 // Printable ASCII only
                 buf.insert(pos++, 1, c);
             }
-            
+
             refreshLine(prompt, buf, pos);
         }
-        
+
         disableRawMode();
         return buf;
     }
