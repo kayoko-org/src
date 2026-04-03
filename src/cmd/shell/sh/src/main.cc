@@ -138,48 +138,52 @@ bool handle_builtins(SimpleCommand* cmd) {
     }
 
     // 6. . (dot) builtin
+
     if (name == ".") {
-        if (cmd->args.size() < 2) {
-            report_error(".", "filename argument required");
-            last_status = 1;
-            return true;
-        }
-
-        std::string path = cmd->args[1];
-        std::ifstream script_stream(path);
-
-        // POSIX: If path doesn't contain a '/', search PATH
-        if (!script_stream.is_open() && path.find('/') == std::string::npos) {
-            char* env_p = getenv("PATH");
-            if (env_p) {
-                std::string path_list(env_p);
-                size_t start = 0, end;
-                while ((end = path_list.find(':', start)) != std::string::npos) {
-                    std::string full_path = path_list.substr(start, end - start) + "/" + path;
-                    script_stream.open(full_path);
-                    if (script_stream.is_open()) break;
-                    start = end + 1;
-                }
-                // Check the last entry in PATH
-                if (!script_stream.is_open()) {
-                    std::string full_path = path_list.substr(start) + "/" + path;
-                    script_stream.open(full_path);
-                }
-            }
-        }
-
-        if (!script_stream.is_open()) {
-            report_error(".", path + ": not found");
-            last_status = 1;
-            return true;
-        }
-
-        // Execute in CURRENT process context
-        // This modifies global 'aliases' and 'last_status' directly
-        run_shell(script_stream, false);
-
+    if (cmd->args.size() < 2) {
+        report_error(".", "filename argument required");
+        last_status = 1;
         return true;
     }
+
+    std::string filename = cmd->args[1];
+    std::ifstream script_stream;
+
+    // POSIX: If filename contains a '/', do NOT search PATH.
+    // Just try to open it exactly as provided.
+    if (filename.find('/') != std::string::npos) {
+        script_stream.open(filename);
+    } else {
+        // POSIX: No slash? Search ONLY the directories in PATH.
+        char* env_p = getenv("PATH");
+        if (env_p) {
+            std::string path_list(env_p);
+            size_t start = 0, end;
+            while (true) {
+                end = path_list.find(':', start);
+                std::string dir = path_list.substr(start, (end == std::string::npos) ? std::string::npos : end - start);
+
+                // Handle empty PATH entry (e.g., "::") which POSIX treats as current directory
+                std::string full_path = (dir.empty() ? "." : dir) + "/" + filename;
+
+                script_stream.open(full_path);
+                if (script_stream.is_open()) break;
+                if (end == std::string::npos) break;
+                start = end + 1;
+            }
+        }
+    }
+
+    if (!script_stream.is_open()) {
+        report_error(".", filename + ": not found");
+        last_status = 1;
+        return true;
+    }
+
+    // Execute in CURRENT process context
+    run_shell(script_stream, false);
+    return true;
+}
 
 
     return false;
