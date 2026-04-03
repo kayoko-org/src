@@ -1,0 +1,472 @@
+/* * IBM Carbon v11 Expressive - OpenBSD Definitive Edition (Refined)
+ * ------------------------------------------------------------------
+ * Theme: Gray 10 (Light) | Accents: Blue 50 / Red 60
+ * Focus: High-contrast technical clarity, square-node architecture.
+ */
+
+/* --- 1. Typography: The Expressive Set --- */
+@font-face {
+    font-family: 'IBM Plex Mono Pi';
+    src: url('/static/fonts/IBMPlexMono-Regular-Pi.woff2') format('woff2');
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    src: url('/static/fonts/IBMPlexSans-Regular.woff2') format('woff2');
+    font-weight: 400;
+}
+
+/* Using 'Light' naming for the 200 weight to ensure clean rendering */
+@font-face {
+    font-family: 'IBM Plex Sans Light'; 
+    src: url('/static/fonts/IBMPlexSans-Light.woff2') format('woff2');
+    font-weight: 200;
+}
+
+/* --- 2. Carbon v11 Tokens --- */
+:root {
+    /* The Cream Palette */
+    --cds-white: #fffdfa;         /* Soft Cream Base */
+    --cds-g10-background: #f7f3ee; /* Toasted Almond for offsets/tables */
+    --cds-border-subtle: #ede8e0;  /* Subtle paper-like borders */
+    
+    /* The Modernized Accents */
+    --cds-blue-50: #f7f3ee;       /* Kayoko Teal */
+    --cds-shell-bg: #121212;      /* Deep Onyx for the UI Shell */
+    
+    /* Typography */
+    --cds-text-primary: #1a1a1a;   /* Softer than pure black */
+    --cds-text-secondary: #58544e; /* Warm charcoal */
+}
+
+.ibm-logo {
+    height: 32px; /* 2rem standard height */
+    width: auto;
+    display: block;
+}
+
+.user-environments dt {
+    font-weight: 600;
+    color: #161616;
+    margin-top: 1rem;
+}
+
+.user-environments dd {
+    margin-left: 1.5rem;
+    color: #525252;
+    font-family: "IBM Plex Sans", sans-serif;
+}
+
+/* --- The Fixed Top Shell --- */
+main nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3rem; /* 48px standard */
+    background-color: #161616;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    z-index: 10000;
+    border-bottom: 1px solid #393939;
+}
+
+/* Branding (larsko's jar) */
+main nav header:first-of-type {
+    font-family: 'IBM Plex Sans Light', sans-serif;
+    font-weight: 200;
+    font-size: 1.25rem;
+    margin-right: 2rem;
+}
+
+main nav header:first-of-type a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+a:focus, button:focus {
+    outline: 2px solid var(--cds-blue-50);
+    outline-offset: -2px;
+}
+
+/* Hide the <br /> and extra headers for a clean horizontal row */
+main nav br, 
+main nav header:not(:first-of-type) {
+    display: none; 
+}
+
+/* Navigation Lists */
+main nav ul {
+    display: flex;
+    list-style: none;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+main nav ul li {
+    height: 100%;
+}
+
+main nav ul li a {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1rem;
+    color: #c6c6c6;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: background-color 110ms, color 110ms;
+}
+
+/* Hover: The "Grey-out" State */
+main nav ul li a:hover {
+    background-color: #353535;
+    color: #ffffff;
+}
+
+/* Offset the article so it doesn't hide under the fixed nav */
+main article {
+    margin-top: 3rem;
+}
+
+/* --- Main Content Offset --- */
+main {
+    padding-top: 3rem;
+    display: block;
+}
+
+/* --- Refined Mobile Standard --- */
+@media (max-width: 672px) {
+    /* 1. Ensure the nav container can expand vertically */
+    main nav, #cds-top-nav {
+        height: auto; 
+        min-height: 3rem;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0;
+    }
+
+    /* 2. Branding becomes a full-width bar at the top */
+    main nav header:first-of-type, 
+    #cds-top-nav header {
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        padding: 0 1rem;
+        margin: 0;
+        border-bottom: 1px solid #393939;
+        background-color: #161616;
+    }
+
+    /* 3. The List: Stacked and contained */
+    main nav ul, 
+    #cds-top-nav nav ul {
+        flex-direction: column;
+        width: 100%;
+        height: auto;
+    }
+
+    /* 4. The Links: Square-node touch targets */
+    main nav ul li a, 
+    #cds-top-nav a {
+        width: 100%;
+        height: 3rem; /* Standard 48px */
+        padding: 0 1rem;
+        border-bottom: 1px solid #262626;
+        border-left: 4px solid transparent;
+        justify-content: flex-start;
+    }
+
+    /* 5. The "OpenBSD" Accent on Hover/Active */
+    main nav ul li a:hover, 
+    #cds-top-nav a:hover {
+        border-left: 4px solid var(--cds-blue-50);
+        background-color: #353535;
+    }
+
+    /* 6. Adjust main content offset for the taller nav */
+    main, #project-main {
+        /* Since the nav is 'fixed', we use a dynamic margin or switch to 'sticky' */
+        padding-top: 0; 
+    }
+    
+    main nav, #cds-top-nav {
+        position: relative; /* Let it push content down naturally on mobile */
+    }
+}
+
+/* --- 3. The "Square" Reset --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border-radius: 0 !important; /* Total rejection of rounds */
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    background-color: var(--cds-white);
+    min-height: 100vh;
+    color: var(--cds-text-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* --- 4. Fixed UI Shell (The Navigation Bar) --- */
+#cds-top-nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 3rem;
+    background-color: var(--cds-shell-bg);
+    color: var(--cds-white);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    border-bottom: 1px solid #393939;
+}
+
+#cds-top-nav header {
+    font-family: 'IBM Plex Sans Light', sans-serif;
+    font-size: 1.25rem;
+    letter-spacing: 0.5px;
+    margin-right: 2.5rem;
+}
+
+/* Navigation Links within Shell */
+#cds-top-nav nav ul {
+    display: flex;
+    list-style: none;
+    height: 100%;
+}
+
+#cds-top-nav a {
+    color: #c6c6c6;
+    text-decoration: none;
+    font-size: 0.875rem;
+    padding: 0 1rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    transition: background 110ms cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+#cds-top-nav a:hover {
+    background-color: #353535;
+    color: #ffffff;
+}
+
+/* --- 5. Main Content Architecture --- */
+#project-main {
+    padding-top: 3rem; /* Shell offset */
+}
+
+article {
+    max-width: 1200px; /* Standard Carbon Grid Max */
+    margin: 0 auto;
+    padding: 5rem 2rem;
+}
+
+/* Expressive Typography */
+h1 {
+    font-family: 'IBM Plex Sans Light', sans-serif;
+    font-size: clamp(3.5rem, 10vw, 5.25rem);
+    font-weight: 200;
+    line-height: 1.05;
+    letter-spacing: -0.02rem;
+    margin-bottom: 4rem;
+}
+
+h2 {
+    font-family: 'IBM Plex Sans Light', sans-serif;
+    font-size: 2rem;
+    margin: 4.5rem 0 1.5rem;
+    border-bottom: 1px solid var(--cds-border-subtle);
+    padding-bottom: 0.75rem;
+}
+
+p {
+    max-width: 66ch; /* Optimal readability for technical docs */
+    margin-bottom: 1.5rem;
+    font-size: 1.125rem;
+    color: var(--cds-text-secondary);
+}
+
+/* --- 6. The "OpenBSD" Functional Components --- */
+
+/* Specialized Branding */
+#OpenBSD {
+    font-family: 'IBM Plex Sans Light', sans-serif;
+    color: var(--cds-red-60);
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--cds-red-60);
+    padding-left: 1rem;
+}
+
+/* Command Architecture */
+.cmdbox {
+    background-color: #161616;
+    color: #f4f4f4;
+    padding: 2rem;
+    margin: 2.5rem 0;
+    font-family: 'IBM Plex Mono Pi', monospace;
+    font-size: 0.9375rem;
+    border-left: 4px solid var(--cds-blue-50);
+    overflow-x: auto;
+    white-space: pre;
+}
+
+/* Square Data Table (The Definitive Manifest) */
+.zebra {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 3rem 0;
+    font-size: 0.875rem;
+}
+
+.zebra thead {
+    background-color: var(--cds-g10-background);
+    border-bottom: 2px solid var(--cds-border-strong);
+}
+
+.zebra th {
+    text-align: left;
+    padding: 1rem;
+    font-weight: 600;
+}
+
+.zebra tr {
+    border-bottom: 1px solid var(--cds-border-subtle);
+    transition: background-color 70ms;
+}
+
+.zebra td {
+    padding: 0.875rem 1rem;
+}
+
+.zebra tr:hover {
+    background-color: #e0e0e0 !important; /* Gray 20 hover */
+}
+
+/* Ghost-link behavior for inline text */
+article a:link, article a:visited {
+    color: var(--cds-blue-50);
+    text-decoration: none;
+    padding: 0 0.2rem;
+}
+
+article a:hover {
+    /* 1.1 makes it 10% brighter */
+	filter: brightness(1.25);
+	transform: translateY(-1px);
+}
+
+/* --- 7. Callouts (The Blue 50 Accent) --- */
+#callout {
+    background-color: var(--cds-g10-background);
+    border: 1px solid var(--cds-blue-50);
+    padding: 3rem;
+    margin: 4rem 0;
+    text-align: left;
+}
+
+/* --- 8. Responsiveness --- */
+@media (max-width: 768px) {
+    h1 { font-size: 3rem; }
+    article { padding: 3rem 1.5rem; }
+    #cds-top-nav header { font-size: 1rem; }
+}
+
+
+article {
+    margin-bottom: 0 !important;
+    padding-bottom: 5rem; /* Keep internal padding, but zero external margin */
+}
+
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 2. Main content takes all available space, but has NO bottom margin */
+main, #project-main {
+    flex: 1 0 auto; 
+    margin-bottom: 0 !important;
+}
+
+/* 3. The Article - internal padding only */
+article {
+    margin-bottom: 0 !important;
+    padding-bottom: 10rem; /* Creates space BEFORE the footer, not AFTER */
+}
+
+html {
+    /* Set the background of the entire universe to the footer color */
+    background-color: #161616 !important; 
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /* Main body background remains white */
+    background-color: var(--cds-white); 
+    overflow-x: hidden;
+}
+
+/* --- 5. Main Content Architecture --- */
+main, #project-main {
+    flex: 1 0 auto;
+    background-color: var(--cds-white); /* Ensures the content area stays light */
+    margin-bottom: 0 !important;
+}
+
+footer {
+    flex-shrink: 0;
+    width: 100%;
+    min-height: 20rem; /* Tall and big */
+    padding: 6rem 4rem;
+    background-color: #161616 !important;
+    color: #525252; /* Gray 70 - Very grey/muted */
+    font-size: 0.875rem;
+    border-top: 1px solid #393939;
+    display: block; /* Standard block for text flow */
+}
+
+/* Muting the text further */
+footer .footer-right {
+    color: #393939; /* Gray 80 - Barely visible legal text */
+    max-width: 60ch;
+    margin-top: 1rem;
+}
+
+footer a {
+    color: #8d8d8d !important; /* Gray 50 for links */
+    text-decoration: underline;
+}
+
+footer a:hover {
+    color: #ffffff !important;
+}
+

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ post.title }} | Kayoko</title>
+    <link rel="stylesheet" href="/styles/global.css">
+</head>
+
+<body>
+    <div id="cds-top-nav">
+        <header>
+            <a href="/">Kayoko</a>
+        </header>
+        <nav>
+            <ul>
+                <li><a href="https://github.com/kayoko-org/src">GitHub</a></li>
+                <li><a href="/build">Build</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <main id="project-main">
+        <article>
+            
+            <header>
+                <h1>{{ post.title }}</h1>
+            </header>
+
+            <section class="prose">
+                {{ content | safe }}
+            </section>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <p><strong>Kayoko</strong> // A secure, Unix-like operating system.</p>
+            <div class="footer-right">
+                <p>Obsessively crafted in Neovim. Built with Yarbs.</p>
+                <p>&copy; 2026 Kayoko Project. Licensed under the CDDL 1.0.</p>
+                <p><a href="/legal">Legal</a> // <a href="/security">Security</a></p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

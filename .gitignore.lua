@@ -4,6 +4,8 @@
 local static_ignores = {
     "inst/",
     "root/",
+    "src/web/target/",
+    "src/web/public/",
     "*.o",
     "*.a",
     "*.so",
