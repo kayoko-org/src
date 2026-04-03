@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <termios.h>
+#include <pwd.h>    // For getpwnam and getpwuid
+#include <sys/types.h>
 #include <cctype>
 #include <cstdlib>
 
@@ -135,31 +137,45 @@ private:
             }
         }
 
-        // 4. File Completion (Paths & local files)
-        if (matches.empty()) {
-            std::string dir_path = ".", file_prefix = search_term;
-            size_t last_slash = search_term.find_last_of("/");
-            if (last_slash != std::string::npos) {
-                dir_path = search_term.substr(0, last_slash);
-                if (dir_path.empty()) dir_path = "/";
-                file_prefix = search_term.substr(last_slash + 1);
-            }
-            DIR* d = opendir(dir_path.c_str());
-            if (d) {
-                struct dirent* entry;
-                while ((entry = readdir(d)) != NULL) {
-                    std::string name = entry->d_name;
-                    if (name == "." || name == "..") continue;
-                    if (name.compare(0, file_prefix.size(), file_prefix) == 0) {
-                        std::string full = (dir_path == "/" ? "/" : dir_path + "/") + name;
-                        struct stat st;
-                        if (stat(full.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) name += "/";
-                        matches.push_back(name);
-                    }
+	
+	// 4. File Completion (Paths & local files)
+if (matches.empty()) {
+    // Convert "~" or "~user" into the absolute filesystem path
+    std::string expanded_search = expand_tilde(search_term);
+
+    std::string dir_path = ".", file_prefix = expanded_search;
+    size_t last_slash = expanded_search.find_last_of("/");
+
+    if (last_slash != std::string::npos) {
+        // If there's a slash, everything before it is the directory to open
+        dir_path = expanded_search.substr(0, last_slash);
+        if (dir_path.empty()) dir_path = "/";
+        file_prefix = expanded_search.substr(last_slash + 1);
+    }
+
+    DIR* d = opendir(dir_path.c_str());
+    if (d) {
+        struct dirent* entry;
+        while ((entry = readdir(d)) != NULL) {
+            std::string name = entry->d_name;
+            if (name == "." || name == "..") continue;
+
+            // Match the directory entry against the prefix (e.g., "Dow" in "Downloads/")
+            if (name.compare(0, file_prefix.size(), file_prefix) == 0) {
+                // Check if the entry is a directory to add the KSH-style trailing slash
+                std::string full = (dir_path == "/" ? "/" : dir_path + "/") + name;
+                struct stat st;
+                if (stat(full.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+                    name += "/";
                 }
-                closedir(d);
+                matches.push_back(name);
             }
         }
+        closedir(d);
+    }
+}
+
+
 
         // 5. Clean up the matches list
         std::sort(matches.begin(), matches.end());
@@ -178,18 +194,38 @@ private:
             lcp = lcp.substr(0, j); // Shrink the common prefix
         }
 
-        // 7. ADVANCE THE BUFFER TO THE COMMON PREFIX
-        size_t last_slash = search_term.find_last_of("/");
-        size_t replace_start = start + (last_slash == std::string::npos ? 0 : last_slash + 1);
-        size_t current_len = pos - replace_start;
+	
+	// 7. ADVANCE THE BUFFER (EXPANDING SHORTHAND TO ABSOLUTE)
+if (!matches.size()) return;
 
-        if (lcp.size() > current_len) {
-            buf.erase(replace_start, current_len);
-            buf.insert(replace_start, lcp);
-            pos = replace_start + lcp.size();
-        }
+std::string replacement;
 
-        // 8. DISPLAY REMAINING OPTIONS IF AMBIGUOUS
+if (search_term[0] == '~') {
+    // 1. Get the absolute base (e.g., /home/david)
+    std::string absolute_base = expand_tilde(search_term);
+    
+    // 2. Identify the directory and the common prefix (LCP)
+    size_t last_slash = absolute_base.find_last_of("/");
+    if (last_slash != std::string::npos) {
+        // Construct the full path: Directory + the matched completion
+        replacement = absolute_base.substr(0, last_slash + 1) + lcp;
+    } else {
+        replacement = lcp;
+    }
+} else {
+    // Standard non-tilde logic: just advance the filename
+    size_t last_slash = search_term.find_last_of("/");
+    size_t prefix_len = (last_slash == std::string::npos) ? 0 : last_slash + 1;
+    replacement = search_term.substr(0, prefix_len) + lcp;
+}
+
+// 3. PHYSICAL UPDATE: Erase the old word and insert the expanded version
+buf.erase(start, pos - start);
+buf.insert(start, replacement);
+pos = start + replacement.size();
+
+
+	// 8. DISPLAY REMAINING OPTIONS IF AMBIGUOUS
         if (matches.size() > 1) {
             write_out("\n");
             for (size_t i = 0; i < matches.size(); ++i) {
@@ -203,6 +239,48 @@ private:
             }
         }
     }
+
+
+std::string expand_tilde(const std::string& path) {
+    if (path.empty() || path[0] != '~') return path;
+
+    // Find where the username ends and the path starts
+    size_t slash_pos = path.find('/');
+    std::string user_part = (slash_pos == std::string::npos)
+                             ? path.substr(1)
+                             : path.substr(1, slash_pos - 1);
+
+    // This is the "tail" of the path (e.g., "/Documents/file.txt")
+    std::string remaining = (slash_pos == std::string::npos)
+                             ? ""
+                             : path.substr(slash_pos);
+
+    std::string absolute_home;
+
+    if (user_part.empty()) {
+        // Case: ~ or ~/ -> Expand to CURRENT user's absolute home
+        const char* home_env = getenv("HOME");
+        if (home_env) {
+            absolute_home = home_env;
+        } else {
+            // Fallback to passwd file if $HOME isn't set
+            struct passwd* pw = getpwuid(getuid());
+            if (pw) absolute_home = pw->pw_dir;
+        }
+    } else {
+        // Case: ~otheruser -> Expand to THAT user's absolute home
+        struct passwd* pw = getpwnam(user_part.c_str());
+        if (pw) {
+            absolute_home = pw->pw_dir;
+        } else {
+            // User not found; KSH leaves the string as-is
+            return path;
+        }
+    }
+
+    // Combine the absolute base with the rest of the path
+    return absolute_home + remaining;
+}
 
 
 public:
