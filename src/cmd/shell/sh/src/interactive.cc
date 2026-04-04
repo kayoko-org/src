@@ -96,6 +96,7 @@ private:
         }
     }
 
+
     void do_ksh_tab_complete(std::string& buf, size_t& pos, const std::string& prompt) {
         // 1. Handle empty buffer or trailing space
         if (buf.empty() || (pos > 0 && isspace(static_cast<unsigned char>(buf[pos-1])))) {
@@ -103,15 +104,26 @@ private:
             return;
         }
 
-        // 2. Identify the word being completed
+        // 2. Identify the word being completed (Declare `start` once here)
         size_t start = buf.find_last_of(" \t", pos - 1);
         start = (start == std::string::npos) ? 0 : start + 1;
+
+        // 3. --- QUOTE AWARENESS CHECK ---
+        bool in_single_quote = false;
+        bool in_double_quote = false;
+
+        for (size_t i = 0; i < start; ++i) {
+            if (buf[i] == '\'' && !in_double_quote) in_single_quote = !in_single_quote;
+            if (buf[i] == '\"' && !in_single_quote) in_double_quote = !in_double_quote;
+        }
+
+        bool is_quoted = in_single_quote || in_double_quote;
         std::string search_term = buf.substr(start, pos - start);
 
         std::vector<std::string> matches;
         bool is_command = (start == 0);
 
-        // 3. PATH Completion (Commands)
+        // 4. PATH Completion (Commands)
         if (is_command && search_term.find('/') == std::string::npos) {
             char* path_env = getenv("PATH");
             if (path_env) {
@@ -137,53 +149,50 @@ private:
             }
         }
 
-	
-	// 4. File Completion (Paths & local files)
-if (matches.empty()) {
-    // Convert "~" or "~user" into the absolute filesystem path
-    std::string expanded_search = expand_tilde(search_term);
+        // 5. File Completion (Paths & local files)
+        if (matches.empty()) {
+            // Convert "~" or "~user" into the absolute filesystem path ONLY if unquoted
+            std::string expanded_search = (is_quoted) ? search_term : expand_tilde(search_term);
 
-    std::string dir_path = ".", file_prefix = expanded_search;
-    size_t last_slash = expanded_search.find_last_of("/");
+            std::string dir_path = ".", file_prefix = expanded_search;
+            size_t last_slash = expanded_search.find_last_of("/");
 
-    if (last_slash != std::string::npos) {
-        // If there's a slash, everything before it is the directory to open
-        dir_path = expanded_search.substr(0, last_slash);
-        if (dir_path.empty()) dir_path = "/";
-        file_prefix = expanded_search.substr(last_slash + 1);
-    }
+            if (last_slash != std::string::npos) {
+                // If there's a slash, everything before it is the directory to open
+                dir_path = expanded_search.substr(0, last_slash);
+                if (dir_path.empty()) dir_path = "/";
+                file_prefix = expanded_search.substr(last_slash + 1);
+            }
 
-    DIR* d = opendir(dir_path.c_str());
-    if (d) {
-        struct dirent* entry;
-        while ((entry = readdir(d)) != NULL) {
-            std::string name = entry->d_name;
-            if (name == "." || name == "..") continue;
+            DIR* d = opendir(dir_path.c_str());
+            if (d) {
+                struct dirent* entry;
+                while ((entry = readdir(d)) != NULL) {
+                    std::string name = entry->d_name;
+                    if (name == "." || name == "..") continue;
 
-            // Match the directory entry against the prefix (e.g., "Dow" in "Downloads/")
-            if (name.compare(0, file_prefix.size(), file_prefix) == 0) {
-                // Check if the entry is a directory to add the KSH-style trailing slash
-                std::string full = (dir_path == "/" ? "/" : dir_path + "/") + name;
-                struct stat st;
-                if (stat(full.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
-                    name += "/";
+                    // Match the directory entry against the prefix (e.g., "Dow" in "Downloads/")
+                    if (name.compare(0, file_prefix.size(), file_prefix) == 0) {
+                        // Check if the entry is a directory to add the KSH-style trailing slash
+                        std::string full = (dir_path == "/" ? "/" : dir_path + "/") + name;
+                        struct stat st;
+                        if (stat(full.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+                            name += "/";
+                        }
+                        matches.push_back(name);
+                    }
                 }
-                matches.push_back(name);
+                closedir(d);
             }
         }
-        closedir(d);
-    }
-}
 
-
-
-        // 5. Clean up the matches list
+        // 6. Clean up the matches list
         std::sort(matches.begin(), matches.end());
         matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
 
         if (matches.empty()) return;
 
-        // 6. CALCULATE LONGEST COMMON PREFIX (LCP)
+        // 7. CALCULATE LONGEST COMMON PREFIX (LCP)
         std::string lcp = matches[0];
         for (size_t i = 1; i < matches.size(); ++i) {
             size_t j = 0;
@@ -194,38 +203,34 @@ if (matches.empty()) {
             lcp = lcp.substr(0, j); // Shrink the common prefix
         }
 
-	
-	// 7. ADVANCE THE BUFFER (EXPANDING SHORTHAND TO ABSOLUTE)
-if (!matches.size()) return;
+        // 8. ADVANCE THE BUFFER (EXPANDING SHORTHAND TO ABSOLUTE)
+        std::string replacement;
 
-std::string replacement;
+        if (!is_quoted && search_term[0] == '~') {
+            // 1. Get the absolute base (e.g., /home/david)
+            std::string absolute_base = expand_tilde(search_term);
 
-if (search_term[0] == '~') {
-    // 1. Get the absolute base (e.g., /home/david)
-    std::string absolute_base = expand_tilde(search_term);
-    
-    // 2. Identify the directory and the common prefix (LCP)
-    size_t last_slash = absolute_base.find_last_of("/");
-    if (last_slash != std::string::npos) {
-        // Construct the full path: Directory + the matched completion
-        replacement = absolute_base.substr(0, last_slash + 1) + lcp;
-    } else {
-        replacement = lcp;
-    }
-} else {
-    // Standard non-tilde logic: just advance the filename
-    size_t last_slash = search_term.find_last_of("/");
-    size_t prefix_len = (last_slash == std::string::npos) ? 0 : last_slash + 1;
-    replacement = search_term.substr(0, prefix_len) + lcp;
-}
+            // 2. Identify the directory and the common prefix (LCP)
+            size_t last_slash = absolute_base.find_last_of("/");
+            if (last_slash != std::string::npos) {
+                // Construct the full path: Directory + the matched completion
+                replacement = absolute_base.substr(0, last_slash + 1) + lcp;
+            } else {
+                replacement = lcp;
+            }
+        } else {
+            // Standard non-tilde logic: just advance the filename
+            size_t last_slash = search_term.find_last_of("/");
+            size_t prefix_len = (last_slash == std::string::npos) ? 0 : last_slash + 1;
+            replacement = search_term.substr(0, prefix_len) + lcp;
+        }
 
-// 3. PHYSICAL UPDATE: Erase the old word and insert the expanded version
-buf.erase(start, pos - start);
-buf.insert(start, replacement);
-pos = start + replacement.size();
+        // PHYSICAL UPDATE: Erase the old word and insert the expanded version
+        buf.erase(start, pos - start);
+        buf.insert(start, replacement);
+        pos = start + replacement.size();
 
-
-	// 8. DISPLAY REMAINING OPTIONS IF AMBIGUOUS
+        // 9. DISPLAY REMAINING OPTIONS IF AMBIGUOUS
         if (matches.size() > 1) {
             write_out("\n");
             for (size_t i = 0; i < matches.size(); ++i) {
