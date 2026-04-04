@@ -1,5 +1,16 @@
 #!/usr/bin/env lua
 
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
+
 local function get_mounts()
     -- On NetBSD, 'mount' output is usually: /dev/xbd0a on / type ffs (local)
     local pipe = io.popen("mount")

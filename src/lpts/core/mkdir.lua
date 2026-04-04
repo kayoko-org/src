@@ -1,3 +1,13 @@
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
 test("mkdir -p handles existing directories", function()
     -- Clean up first to ensure a fresh state
     os.execute("rm -rf /tmp/lpts_test")

@@ -1,3 +1,13 @@
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
 test("pax: basic archive and list", function()
     os.execute("echo 'test' > lpts_pax_file")
     os.execute("pax -wf archive.pax lpts_pax_file")

@@ -1,3 +1,13 @@
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
 test("chmod: octal mode", function()
     os.execute("touch _chmod_test")
     os.execute("chmod 644 _chmod_test")

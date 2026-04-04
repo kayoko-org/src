@@ -1,3 +1,13 @@
+/*
+ * Kayoko - Source Code
+ * 
+ * Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+ * 
+ * This file is licensed under the Common Development and Distribution License (CDDL).
+ * 
+ * See /usr/src/COPYING for details.
+ */
+
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,3 +1,13 @@
+<!--
+Kayoko - Documentation
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Public Documentation License (PDL).
+
+See /usr/src/DOCCOPYING for details.
+-->
+
 Lua POSIX Test Suite
 ====================
 

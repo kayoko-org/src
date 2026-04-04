@@ -1,3 +1,13 @@
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
 test("basename: trailing slashes", function()
     -- POSIX: "trailing <slash> characters shall be deleted"
     local handle = io.popen("basename /usr/bin/")

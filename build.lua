@@ -1,5 +1,16 @@
 #!/usr/bin/env lua
 
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
+
 local os = require("os")
 local io = require("io")
 

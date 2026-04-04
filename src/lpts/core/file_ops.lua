@@ -1,3 +1,13 @@
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
 test("rm: basic unlink", function()
     os.execute("touch _rm_test")
     os.execute("rm _rm_test")

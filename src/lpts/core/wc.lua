@@ -1,3 +1,13 @@
+--[[
+Kayoko - Source Code
+
+Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+
+This file is licensed under the Common Development and Distribution License (CDDL).
+
+See /usr/src/COPYING for details.
+--]]
+
 -- 1. Basic line count
 test("wc: basic line count", function()
     os.execute("printf '1\n2\n3\n' > _wc_test")

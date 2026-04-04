@@ -1,3 +1,13 @@
+/*
+ * Kayoko - Source Code
+ * 
+ * Copyright (c) 2026 The Kayoko Project. All Rights Reserved
+ * 
+ * This file is licensed under the Common Development and Distribution License (CDDL).
+ * 
+ * See /usr/src/COPYING for details.
+ */
+
 #define KAYOKO_FILES_MTIME_NEEDS_UPDATE_IMPLEMENTATION
 #include <kayoko/files/mtime/needs/update.h>
 
